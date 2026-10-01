@@ -32,7 +32,7 @@ public sealed record ListResult(IReadOnlyList<Dictionary<string, object?>> Items
 /// (by the entity's scope and period binding) and to the user's permissions; every change is
 /// audited. Records are soft-deleted and versioned (row_version) against lost updates.
 /// </summary>
-public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry registry, IRequestContext ctx, TimeProvider time)
+public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry registry, IRequestContext ctx, TimeProvider time, IAppCode code)
 {
     sealed record Target(AppDefinition App, EntityDefinition Entity, EntityDefinition Root, TableSchema Table);
 
@@ -58,11 +58,12 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
 
     // ── Read ───────────────────────────────────────────────────────────────
 
-    public async Task<(DataResult Result, ListResult? List)> ListAsync(string appKey, string entityKey, ListQuery query, CancellationToken ct = default)
+    /// <param name="asSystem">App code reading: the organization scope applies, the user's permissions do not.</param>
+    public async Task<(DataResult Result, ListResult? List)> ListAsync(string appKey, string entityKey, ListQuery query, CancellationToken ct = default, bool asSystem = false)
     {
         var t = await ResolveAsync(appKey, entityKey, ct);
         if (t is null) return (DataResult.NotFound, null);
-        if (!CanRead(t.App, t.Entity)) return (DataResult.Forbidden("Bu kayıtları görme yetkiniz yok."), null);
+        if (!asSystem && !CanRead(t.App, t.Entity)) return (DataResult.Forbidden("Bu kayıtları görme yetkiniz yok."), null);
         if (t.Entity.Parent is not null && query.ParentId is null) return (DataResult.Invalid("Detay kayıtları üst kayıtla birlikte listelenir."), null);
 
         await db.Database.OpenConnectionAsync(ct);
@@ -114,11 +115,11 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
     /// <summary>The parameter's value before dialect conversion was applied (conversion is idempotent for our types).</summary>
     static object? Original(DbParameter p) => p.Value is DBNull ? null : p.Value;
 
-    public async Task<(DataResult Result, Dictionary<string, object?>? Record)> GetAsync(string appKey, string entityKey, Guid id, CancellationToken ct = default)
+    public async Task<(DataResult Result, Dictionary<string, object?>? Record)> GetAsync(string appKey, string entityKey, Guid id, CancellationToken ct = default, bool asSystem = false)
     {
         var t = await ResolveAsync(appKey, entityKey, ct);
         if (t is null) return (DataResult.NotFound, null);
-        if (!CanRead(t.App, t.Entity)) return (DataResult.Forbidden("Bu kaydı görme yetkiniz yok."), null);
+        if (!asSystem && !CanRead(t.App, t.Entity)) return (DataResult.Forbidden("Bu kaydı görme yetkiniz yok."), null);
         await db.Database.OpenConnectionAsync(ct);
         try
         {
@@ -210,8 +211,6 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
         try
         {
             await using var tx = await db.Database.BeginTransactionAsync(ct);
-            var refErrors = await CheckReferencesAsync(t, fields, tx, ct);
-            if (refErrors.Count > 0) return new DataResult(DataStatus.Invalid, FieldErrors: refErrors);
 
             // Scope columns: a detail takes its master's; a master takes the request context.
             var system = new Dictionary<string, object?>();
@@ -231,6 +230,7 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
             if (system.GetValueOrDefault("period_id") is Guid period && await PeriodClosedAsync(period, ct)) return DataResult.Invalid("Dönem kapalı; kayıt eklenemez.");
 
             var id = Guid.CreateVersion7();
+            if (await RunBeforeSaveAsync(t, id, parentId, fields, isNew: true, tx, ct) is { } refused) return refused;
             var now = time.GetUtcNow().UtcDateTime;
             var columns = new Dictionary<string, object?>(system) { ["id"] = id };
             foreach (var (k, v) in fields) columns[k] = v;
@@ -246,6 +246,7 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
                 for (var i = 0; i < names.Count; i++) d.Parameter(insert, $"@p{i}", columns[names[i]]);
                 await insert.ExecuteNonQueryAsync(ct);
             }
+            if (Refused(await code.AfterSaveAsync(t.App, t.Entity, id, parentId, fields, isNew: true, ct)) is { } afterCreate) return afterCreate;
             Audit(t, "create", id, fields.ToDictionary(x => x.Key, x => Display(x.Value)));
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
@@ -273,8 +274,8 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
 
             var (fields, errors) = Parse(t.Entity, values, existing);
             if (errors.Count > 0) return new DataResult(DataStatus.Invalid, FieldErrors: errors);
-            var refErrors = await CheckReferencesAsync(t, fields, tx, ct);
-            if (refErrors.Count > 0) return new DataResult(DataStatus.Invalid, FieldErrors: refErrors);
+            var parentId = existing.GetValueOrDefault("parentId") as Guid?;
+            if (await RunBeforeSaveAsync(t, id, parentId, fields, isNew: false, tx, ct) is { } refused) return refused;
 
             var changes = fields.Where(f => !Equals(existing.GetValueOrDefault(f.Key), f.Value))
                 .ToDictionary(f => f.Key, f => (object?)new { old = Display(existing.GetValueOrDefault(f.Key)), @new = Display(f.Value) });
@@ -299,6 +300,7 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
                 if (await update.ExecuteNonQueryAsync(ct) == 0)
                     return new DataResult(DataStatus.Conflict, id, Errors: ["Kayıt siz açtıktan sonra başka biri tarafından değiştirilmiş. Yeniden yükleyip tekrar deneyin."]);
             }
+            if (Refused(await code.AfterSaveAsync(t.App, t.Entity, id, parentId, fields, isNew: false, ct)) is { } afterUpdate) return afterUpdate;
             if (changes.Count > 0) Audit(t, "update", id, changes);
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
@@ -323,6 +325,9 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
             var existing = await LoadAsync(t, id, tx, ct);
             if (existing is null) return DataResult.NotFound;
             if (existing.GetValueOrDefault("periodId") is Guid period && await PeriodClosedAsync(period, ct)) return DataResult.Invalid("Dönem kapalı; kayıt silinemez.");
+            var current = t.Entity.Fields.ToDictionary(f => f.Key, f => existing.GetValueOrDefault(f.Key));
+            var outcome = await code.BeforeDeleteAsync(t.App, t.Entity, id, existing.GetValueOrDefault("parentId") as Guid?, current, ct);
+            if (outcome.Refused) return new DataResult(DataStatus.Invalid, FieldErrors: outcome.FieldErrors, Errors: outcome.Errors.Count > 0 ? [.. outcome.Errors] : null);
 
             // Records still pointing at it (not deleted) keep it.
             foreach (var other in t.App.Entities)
@@ -378,6 +383,46 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
                 await SoftDeleteAsync(app, child, "parent_id", id, now, tx, ct);
     }
 
+    /// <summary>
+    /// The app's Validate and BeforeSave events, then the engine's own checks again on what they
+    /// left (BeforeSave may change values) and the references. Null = go ahead.
+    /// </summary>
+    async Task<DataResult?> RunBeforeSaveAsync(Target t, Guid id, Guid? parentId, Dictionary<string, object?> fields, bool isNew, IDbContextTransaction tx, CancellationToken ct)
+    {
+        var outcome = await code.BeforeSaveAsync(t.App, t.Entity, id, parentId, fields, isNew, ct);
+        if (outcome.Refused) return new DataResult(DataStatus.Invalid, FieldErrors: outcome.FieldErrors, Errors: outcome.Errors.Count > 0 ? [.. outcome.Errors] : null);
+        var errors = Recheck(t.Entity, fields);
+        if (errors.Count > 0) return new DataResult(DataStatus.Invalid, FieldErrors: errors);
+        var refErrors = await CheckReferencesAsync(t, fields, tx, ct);
+        return refErrors.Count > 0 ? new DataResult(DataStatus.Invalid, FieldErrors: refErrors) : null;
+    }
+
+    /// <summary>A refusal of app code as a result (the transaction is then not committed).</summary>
+    static DataResult? Refused(CodeOutcome o) =>
+        o.Refused ? new DataResult(DataStatus.Invalid, FieldErrors: o.FieldErrors, Errors: o.Errors.Count > 0 ? [.. o.Errors] : null) : null;
+
+    /// <summary>Required, length and choice rules on the final values (after the app code ran).</summary>
+    static Dictionary<string, string> Recheck(EntityDefinition entity, Dictionary<string, object?> values)
+    {
+        var errors = new Dictionary<string, string>();
+        foreach (var f in entity.Fields)
+        {
+            var v = values.GetValueOrDefault(f.Key);
+            if (v is string { Length: 0 }) values[f.Key] = v = null;
+            if (v is null)
+            {
+                if (f.Required) errors[f.Key] = "Zorunlu alan.";
+                continue;
+            }
+            var max = f.MaxLength ?? FieldDefinition.DefaultMaxLength;
+            var scale = f.Scale ?? FieldDefinition.DefaultScale;
+            if (f.Type == FieldType.Text && v is string s && s.Length > max) errors[f.Key] = $"En fazla {max} karakter.";
+            else if (f.Type == FieldType.Choice && v is string c && f.Choices!.All(o => o.Value != c)) errors[f.Key] = "Geçerli bir seçenek seçin.";
+            else if (f.Type == FieldType.Decimal && v is decimal m && decimal.Round(m, scale) != m) values[f.Key] = decimal.Round(m, scale, MidpointRounding.AwayFromZero);
+        }
+        return errors;
+    }
+
     // ── Values ─────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -406,9 +451,13 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
                 }
             }
             else value = existing?.GetValueOrDefault(f.Key);
-            if (f.Required && value is null) errors[f.Key] = "Zorunlu alan.";
             values[f.Key] = value;
         }
+        // App code may still fill required fields (BeforeSave); only when the save stops here
+        // anyway are the missing ones reported with the other errors.
+        if (errors.Count > 0)
+            foreach (var f in entity.Fields.Where(f => f.Required && !errors.ContainsKey(f.Key) && values.GetValueOrDefault(f.Key) is null))
+                errors[f.Key] = "Zorunlu alan.";
         return (values, errors);
     }
 

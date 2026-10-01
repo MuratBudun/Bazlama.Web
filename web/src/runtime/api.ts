@@ -48,6 +48,8 @@ export interface RuntimeAppInfo {
 export interface RuntimeApp {
   definition: AppDef
   access: Record<string, { canRead: boolean; canWrite: boolean }>
+  /** Entity key → the app code's record actions (form buttons). */
+  actions: Record<string, { key: string; label: string; icon: string | null; confirm: string | null }[]>
 }
 
 /** A record: system values (id, rowVersion, createdAt…) and the field values; `_titles` names the referenced records. */
@@ -96,4 +98,6 @@ export const records = {
   update: (app: string, entity: string, id: string, values: Record<string, unknown>, rowVersion: number) =>
     api.put<{ id: string }>(`${dataPath(app, entity)}/${id}`, { values, rowVersion }),
   delete: (app: string, entity: string, id: string) => api.delete(`${dataPath(app, entity)}/${id}`),
+  action: (app: string, entity: string, id: string, action: string) =>
+    api.post<{ message: string | null }>(`${dataPath(app, entity)}/${id}/actions/${encodeURIComponent(action)}`),
 }

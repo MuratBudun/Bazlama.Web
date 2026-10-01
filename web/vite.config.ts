@@ -31,6 +31,11 @@ export default defineConfig({
     proxy: { "/api": HOST },
   },
   // The host serves the built UI from its wwwroot.
-  build: { outDir: r("../src/Bazlama.Host/wwwroot"), emptyOutDir: true },
+  build: {
+    outDir: r("../src/Bazlama.Host/wwwroot"),
+    emptyOutDir: true,
+    // Monaco (the Development editor) is one ~4 MB chunk, loaded only there.
+    chunkSizeWarningLimit: 4500,
+  },
   test: { environment: "jsdom" },
 })

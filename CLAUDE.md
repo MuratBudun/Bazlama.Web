@@ -66,6 +66,17 @@ npm run build        # outputs to src/Bazlama.Host/wwwroot (gitignored), served 
   - **Permissions.** Each master entity gets `app.<app>.<entity>.read` and `.write`; its details use the master's permissions. `PermissionCatalog` adds them to the kernel permissions.
   - **APIs.** `/api/management/apps` installs apps (Management module). `/api/runtime/data/{app}/{entity}` serves records (`src/Bazlama.Modules.Runtime`).
   - Ids are Guid v7 and times are UTC.
+- **App code** (`src/Bazlama.Sdk`, `src/Bazlama.Compiler`, `src/Bazlama.Modules.Development`).
+  - App code sees only `Bazlama.Sdk`: `EntityEvents<T>` (Validate, BeforeSave, AfterSave, BeforeDelete), `RecordAction<T>` + `[Action]`, and `IAppContext` (user, context, read-only `Records`).
+  - `EntityCodeGenerator` emits typed entity classes (`_Entities.g.cs`, namespace `<App>App`). They are compiled together with the workspace files (`sys_app_code_files`).
+  - `AppCompiler` compiles deterministically against a fixed reference set, and a semantic check rejects forbidden APIs (BZ0001: IO, net, reflection, processes, threads…). This is a guard rail, not a sandbox.
+  - `AppCodeHost` loads each app's active build (`sys_app_builds`) into its own collectible `AssemblyLoadContext`. A new build swaps in without a restart. Code libraries (`sys_code_library_versions`) load into the same context.
+  - `CompiledAppCode` implements the engine's `IAppCode`: records are mapped to the generated classes, there is a time limit, and failures become a refusal. `AfterSave` runs inside the save transaction.
+  - Installing a new app version rebuilds its code (`IAppInstallListener`). If that fails, the code is unloaded ("stale").
+  - The Development API writes only when `PlatformInfo.CanDevelop`, that is EnvironmentMode=Development.
+  - Completion uses Roslyn `CompletionService` (`CodeCompletion`).
+- **Development UI** (`web/src/development/`). `workspace.ts` is the Monaco workspace: file list, markers from `/check`, completion from `/complete`.
+  - Monaco is imported only in `monaco.ts`: the editor core, `features/register.all` and the C# grammar. It is loaded with a dynamic import.
 - **Web runtime** (`web/src/runtime/`). Lists, forms and detail grids are drawn from the metadata. Field editors and grid formatting are in `fields.ts`.
   - The core template treats every function value as a reactive binding. To pass a function to a property (for example `.pick`), wrap it: `.pick=${() => () => pick()}`.
   - `loading()` builds page bodies untracked. Keep it that way, or typing into a form rebuilds the page.
@@ -81,3 +92,5 @@ npm run build        # outputs to src/Bazlama.Host/wwwroot (gitignored), served 
 - Package versions live only in `Directory.Packages.props` (central package management).
 - Tests use xUnit v3 (`TestContext.Current.CancellationToken`, `Assert.SkipWhen`). Testcontainers throws in `Build()` when Docker is missing, so containers are built inside `StartContainerAsync`, never in field initializers.
 - Dev ports: host 5400, Vite 5401 (the component library playground uses 5391).
+- A running `dotnet run` host locks `src/Bazlama.Host/bin`, so builds and tests fail. For manual testing, run a published copy (`dotnet publish src/Bazlama.Host -c Release -o <dir>`) instead.
+- Cookies are per host, not per port: two local instances on `localhost` sign each other out. Use `127.0.0.1` for the second one, or set `Platform:CookieName`.

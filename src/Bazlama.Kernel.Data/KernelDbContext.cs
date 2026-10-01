@@ -1,6 +1,7 @@
 using Bazlama.Kernel;
 using Bazlama.Kernel.Apps;
 using Bazlama.Kernel.Auditing;
+using Bazlama.Kernel.Code;
 using Bazlama.Kernel.Identity;
 using Bazlama.Kernel.Organization;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
@@ -34,6 +35,13 @@ public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbCont
 
     public DbSet<InstalledApp> Apps => Set<InstalledApp>();
     public DbSet<AppVersionHistory> AppVersions => Set<AppVersionHistory>();
+
+    public DbSet<AppCodeFile> AppCodeFiles => Set<AppCodeFile>();
+    public DbSet<AppWorkspace> AppWorkspaces => Set<AppWorkspace>();
+    public DbSet<AppBuild> AppBuilds => Set<AppBuild>();
+    public DbSet<CodeLibrary> CodeLibraries => Set<CodeLibrary>();
+    public DbSet<CodeLibraryFile> CodeLibraryFiles => Set<CodeLibraryFile>();
+    public DbSet<CodeLibraryVersion> CodeLibraryVersions => Set<CodeLibraryVersion>();
 
     /// <summary>Data Protection keys (TOTP secrets, cookies): in the database, so every node and restart shares them.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -176,6 +184,51 @@ public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbCont
             e.Property(x => x.Version).HasMaxLength(Code);
             e.HasOne<InstalledApp>().WithMany().HasForeignKey(x => x.AppId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.AppId);
+        });
+
+        model.Entity<AppCodeFile>(e =>
+        {
+            e.ToTable("sys_app_code_files");
+            e.Property(x => x.AppKey).HasMaxLength(Code);
+            e.Property(x => x.Path).HasMaxLength(Name);
+            e.HasIndex(x => new { x.AppKey, x.Path }).IsUnique();
+        });
+        model.Entity<AppWorkspace>(e =>
+        {
+            e.ToTable("sys_app_workspaces");
+            e.Property(x => x.AppKey).HasMaxLength(Code);
+            e.HasIndex(x => x.AppKey).IsUnique();
+        });
+        model.Entity<AppBuild>(e =>
+        {
+            e.ToTable("sys_app_builds");
+            e.Property(x => x.AppKey).HasMaxLength(Code);
+            e.Property(x => x.AppVersion).HasMaxLength(Code);
+            e.Property(x => x.Hash).HasMaxLength(64);
+            e.HasIndex(x => new { x.AppKey, x.Number }).IsUnique();
+        });
+        model.Entity<CodeLibrary>(e =>
+        {
+            e.ToTable("sys_code_libraries");
+            e.Property(x => x.Key).HasMaxLength(Code);
+            e.Property(x => x.Name).HasMaxLength(Name);
+            e.Property(x => x.Description).HasMaxLength(1000);
+            e.HasIndex(x => x.Key).IsUnique();
+        });
+        model.Entity<CodeLibraryFile>(e =>
+        {
+            e.ToTable("sys_code_library_files");
+            e.Property(x => x.Path).HasMaxLength(Name);
+            e.HasOne<CodeLibrary>().WithMany().HasForeignKey(x => x.LibraryId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.LibraryId, x.Path }).IsUnique();
+        });
+        model.Entity<CodeLibraryVersion>(e =>
+        {
+            e.ToTable("sys_code_library_versions");
+            e.Property(x => x.Version).HasMaxLength(Code);
+            e.Property(x => x.Hash).HasMaxLength(64);
+            e.HasOne<CodeLibrary>().WithMany().HasForeignKey(x => x.LibraryId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.LibraryId, x.Version }).IsUnique();
         });
 
         model.Entity<DataProtectionKey>().ToTable("sys_data_protection_keys");

@@ -177,7 +177,7 @@ function formFields(app: AppDef, e: EntityDef, state: ReturnType<typeof formStat
 export const recordPage = definePage({
   title: "Kayıt",
   setup(ctx) {
-    return withApp(ctx, ({ definition: app, access }) => {
+    return withApp(ctx, ({ definition: app, access, actions }) => {
       const e = entityOf(app, ctx.params().entity)
       if (!e || e.parent) return html`<bz-alert variant="danger">Kayıt türü bulunamadı.</bz-alert>`
       const id = ctx.params().id
@@ -228,6 +228,17 @@ export const recordPage = definePage({
             busy.set(false)
           }
         }
+        const run = async (a: RuntimeApp["actions"][string][number]) => {
+          if (state.dirty()) return toast.warning("Önce değişiklikleri kaydedin.")
+          if (a.confirm && !(await dialogs.confirm({ heading: a.label, message: a.confirm, confirmText: a.label, cancelText: "Vazgeç" }))) return
+          try {
+            const res = await records.action(app.key, e.key, id, a.key)
+            toast.success(res.message ?? `${a.label}: tamamlandı.`)
+            record.set(await records.get(app.key, e.key, id))
+          } catch (err) {
+            toast.error(errorText(err))
+          }
+        }
         const remove = () =>
           confirmAction({
             heading: `${e.name} sil`,
@@ -247,6 +258,7 @@ export const recordPage = definePage({
             <bz-button variant="ghost" size="sm" aria-label=${`${plural(e)} listesine dön`} @click=${() => void ctx.navigate(listPath)}>${icon("arrow-left")}</bz-button>
             <h1>${title}</h1><span class="muted small">${e.name}</span>
             <span class="spacer"></span>
+            ${!isNew && canWrite ? (actions[e.key] ?? []).map((a) => html`<bz-button @click=${() => run(a)}>${a.icon ? icon(a.icon) : null} ${a.label}</bz-button>`) : null}
             ${!isNew && canWrite ? html`<bz-button variant="danger" @click=${remove}>${icon("trash")} Sil</bz-button>` : null}
           </div>
           ${canWrite ? null : html`<bz-alert variant="info">Bu kaydı yalnız görüntüleyebilirsiniz.</bz-alert>`}

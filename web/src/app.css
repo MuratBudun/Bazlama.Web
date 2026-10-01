@@ -291,3 +291,132 @@ pre.json {
   color: var(--bz-color-danger);
   font-weight: 600;
 }
+
+/* Development: code workspace */
+/* The workspace fills the page (data-shell-fill); the page itself does not scroll. */
+.code-page {
+  padding-bottom: 1rem;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "files editor" "problems problems";
+  min-height: 0;
+  border: 1px solid var(--bz-color-border);
+  border-radius: var(--bz-radius);
+  overflow: hidden;
+  background: var(--bz-color-surface);
+}
+.workspace .files {
+  grid-area: files;
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  overflow: auto;
+  border-inline-end: 1px solid var(--bz-color-border);
+}
+.workspace ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.workspace .files li {
+  display: flex;
+  align-items: center;
+}
+.workspace .file {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: start;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: var(--bz-radius-sm);
+  cursor: pointer;
+}
+.workspace .file:hover {
+  background: var(--bz-color-bg);
+}
+.workspace .file.current {
+  background: color-mix(in srgb, var(--bz-color-primary) 12%, transparent);
+}
+.workspace .file .name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace .dot {
+  color: var(--bz-color-primary);
+  font-size: 0.7rem;
+}
+.workspace .editor-host {
+  grid-area: editor;
+  position: relative;
+  min-height: 0;
+}
+.workspace .editor-host .loading {
+  position: absolute;
+  inset: 1rem;
+}
+.workspace .problems {
+  grid-area: problems;
+  display: grid;
+  gap: 0.25rem;
+  max-height: 11rem;
+  padding: 0.4rem 0.6rem;
+  overflow: auto;
+  border-top: 1px solid var(--bz-color-border);
+}
+.workspace .problem {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.15rem 0.25rem;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: start;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.workspace .problem:hover {
+  background: var(--bz-color-bg);
+}
+.workspace .problem.error > :first-child {
+  color: var(--bz-color-danger);
+}
+.workspace .problem.warning > :first-child {
+  color: var(--bz-color-warning, #b7791f);
+}
+.workspace .problem .where {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  white-space: nowrap;
+}
+.workspace .problem .message {
+  flex: 1;
+}
+@media (max-width: 720px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "files" "editor" "problems";
+  }
+  .workspace {
+    grid-template-rows: auto minmax(18rem, 1fr) auto;
+  }
+  .workspace .files {
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--bz-color-border);
+    max-height: 10rem;
+  }
+}

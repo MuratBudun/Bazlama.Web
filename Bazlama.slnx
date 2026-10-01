@@ -3,12 +3,15 @@
     <Project Path="src/Bazlama.Kernel/Bazlama.Kernel.csproj" />
     <Project Path="src/Bazlama.Kernel.Data/Bazlama.Kernel.Data.csproj" />
     <Project Path="src/Bazlama.Engine/Bazlama.Engine.csproj" />
+    <Project Path="src/Bazlama.Sdk/Bazlama.Sdk.csproj" />
+    <Project Path="src/Bazlama.Compiler/Bazlama.Compiler.csproj" />
     <Project Path="src/Bazlama.Data.SqlServer/Bazlama.Data.SqlServer.csproj" />
     <Project Path="src/Bazlama.Data.PostgreSql/Bazlama.Data.PostgreSql.csproj" />
     <Project Path="src/Bazlama.Data.Sqlite/Bazlama.Data.Sqlite.csproj" />
     <Project Path="src/Bazlama.Modules.Identity/Bazlama.Modules.Identity.csproj" />
     <Project Path="src/Bazlama.Modules.Management/Bazlama.Modules.Management.csproj" />
     <Project Path="src/Bazlama.Modules.Runtime/Bazlama.Modules.Runtime.csproj" />
+    <Project Path="src/Bazlama.Modules.Development/Bazlama.Modules.Development.csproj" />
     <Project Path="src/Bazlama.Host/Bazlama.Host.csproj" />
   </Folder>
   <Folder Name="/tests/">

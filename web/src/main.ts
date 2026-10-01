@@ -10,7 +10,6 @@ import { authPage, enrollStep } from "./auth/auth-page"
 import { chooseContext } from "./auth/context-dialog"
 import { changePassword } from "./auth/password-dialog"
 import { canManage, managementNav, managementRoutes } from "./management"
-import { areaPage } from "./pages/area"
 import homePage from "./pages/home"
 import { loadRuntimeApps } from "./runtime/api"
 import { appPage, listPage, recordPage, runtimeHome, runtimeNav } from "./runtime/pages"
@@ -33,7 +32,9 @@ const router = createRouter({
     { path: "/runtime/:app", page: appPage, remount: true },
     { path: "/runtime/:app/:entity", page: listPage, remount: true },
     { path: "/runtime/:app/:entity/:id", page: recordPage, remount: true },
-    { path: "/development", page: areaPage("Geliştirme", "code", "Entity, liste, form tasarımı ve kod editörü (Faz 3–4).") },
+    { path: "/development", page: () => import("./development/pages").then((m) => m.devHome) },
+    { path: "/development/apps/:app", page: () => import("./development/pages").then((m) => m.appCodePage), remount: true },
+    { path: "/development/libraries/:key", page: () => import("./development/pages").then((m) => m.libraryPage), remount: true },
     ...managementRoutes,
   ],
 })

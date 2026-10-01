@@ -7,6 +7,8 @@ export class ApiError extends Error {
     readonly errors: string[],
     /** Field key → message (the data engine's validation). */
     readonly fieldErrors: Record<string, string> = {},
+    /** The whole answer (e.g. a failed build's diagnostics). */
+    readonly body: unknown = null,
   ) {
     super(errors.join(" ") || `HTTP ${status}`)
   }
@@ -25,7 +27,7 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
   if (!res.ok) {
     if (res.status === 401 && !path.startsWith("/auth/")) window.dispatchEvent(new Event(SESSION_LOST))
     const body = data as { errors?: string[]; fieldErrors?: Record<string, string> | null } | null
-    throw new ApiError(res.status, body?.errors?.length ? body.errors : [statusText(res.status)], body?.fieldErrors ?? {})
+    throw new ApiError(res.status, body?.errors?.length ? body.errors : [statusText(res.status)], body?.fieldErrors ?? {}, data)
   }
   return data as T
 }

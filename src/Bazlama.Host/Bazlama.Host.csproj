@@ -8,5 +8,6 @@
     <ProjectReference Include="..\Bazlama.Modules.Identity\Bazlama.Modules.Identity.csproj" />
     <ProjectReference Include="..\Bazlama.Modules.Management\Bazlama.Modules.Management.csproj" />
     <ProjectReference Include="..\Bazlama.Modules.Runtime\Bazlama.Modules.Runtime.csproj" />
+    <ProjectReference Include="..\Bazlama.Modules.Development\Bazlama.Modules.Development.csproj" />
   </ItemGroup>
 </Project>

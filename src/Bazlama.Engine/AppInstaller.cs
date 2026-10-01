@@ -42,8 +42,14 @@ public sealed record PlannedChange(string Description, bool Destructive);
 
 public sealed record InstallResult(bool Installed, InstallPlan Plan);
 
+/// <summary>Told after an app version is installed (e.g. its code is compiled again).</summary>
+public interface IAppInstallListener
+{
+    Task AppInstalledAsync(AppDefinition app, CancellationToken ct);
+}
+
 /// <summary>Installs a version of an app: checks it, changes the schema, records it.</summary>
-public sealed class AppInstaller(KernelDbContext db, SqlDialect dialect, AppRegistry registry, IRequestContext request, TimeProvider time)
+public sealed class AppInstaller(KernelDbContext db, SqlDialect dialect, AppRegistry registry, IRequestContext request, TimeProvider time, IEnumerable<IAppInstallListener> listeners)
 {
     public async Task<InstallPlan> PlanAsync(AppDefinition next, CancellationToken ct = default) => (await PrepareAsync(next, ct)).Plan;
 
@@ -118,6 +124,7 @@ public sealed class AppInstaller(KernelDbContext db, SqlDialect dialect, AppRegi
             await db.Database.CloseConnectionAsync();
             registry.Invalidate();
         }
+        foreach (var listener in listeners) await listener.AppInstalledAsync(next, ct);
         return new(true, plan);
     }
 

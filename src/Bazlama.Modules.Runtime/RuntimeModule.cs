@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Bazlama.Compiler;
 using Bazlama.Engine;
 using Bazlama.Engine.Metadata;
 using Bazlama.Modules.Identity;
@@ -30,12 +31,12 @@ public static class RuntimeModule
                 .OrderBy(a => a.Name));
 
         // The definition the UI renders, with what the user may do per entity.
-        api.MapGet("/apps/{app}", async (string app, AppRegistry registry, DataService data, CancellationToken ct) =>
+        api.MapGet("/apps/{app}", async (string app, AppRegistry registry, DataService data, ActionRunner actions, CancellationToken ct) =>
         {
             var def = await registry.GetAsync(app, ct);
             if (def is null || !def.Entities.Any(e => data.CanRead(def, e))) return Results.NotFound();
             var access = def.Entities.ToDictionary(e => e.Key, e => new EntityAccess(data.CanRead(def, e), data.CanWrite(def, e)));
-            return Results.Ok(new { definition = JsonSerializer.SerializeToElement(def, AppDefinition.Json), access });
+            return Results.Ok(new { definition = JsonSerializer.SerializeToElement(def, AppDefinition.Json), access, actions = actions.ActionsOf(app) });
         });
 
         var records = api.MapGroup("/data/{app}/{entity}");
@@ -60,6 +61,15 @@ public static class RuntimeModule
 
         records.MapDelete("/{id:guid}", async (string app, string entity, Guid id, DataService data, CancellationToken ct) =>
             Respond(await data.DeleteAsync(app, entity, id, ct)));
+
+        // A button of the app code on the record's form.
+        records.MapPost("/{id:guid}/actions/{action}", async (string app, string entity, Guid id, string action, ActionRunner runner, CancellationToken ct) =>
+        {
+            var r = await runner.RunAsync(app, entity, id, action, ct);
+            return r.Status == DataStatus.Ok
+                ? Results.Ok(new { message = r.Message })
+                : Fail(new DataResult(r.Status, FieldErrors: r.FieldErrors, Errors: r.Errors));
+        });
 
         return endpoints;
     }
