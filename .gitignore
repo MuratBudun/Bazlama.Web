@@ -396,3 +396,11 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Bazlama
+# The host serves the built web UI (web/ → npm run build); build output, not source.
+src/Bazlama.Host/wwwroot/
+# Local SQLite databases and app data of development runs
+*.db
+*.db-shm
+*.db-wal

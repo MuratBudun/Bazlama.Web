@@ -1,0 +1,156 @@
+html,
+body {
+  margin: 0;
+}
+body {
+  font: var(--bz-font-size) / var(--bz-line-height) var(--bz-font-family);
+  color: var(--bz-color-fg);
+  background: var(--bz-color-bg);
+}
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  padding: 1.25rem 1.5rem 2rem;
+}
+.page-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.page-head h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+.muted {
+  color: var(--bz-color-fg-muted);
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1.25rem;
+  margin: 0;
+}
+.facts dt {
+  color: var(--bz-color-fg-muted);
+}
+.facts dd {
+  margin: 0;
+}
+.stack {
+  display: grid;
+  gap: 0.85rem;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.spacer {
+  flex: 1;
+}
+.small {
+  font-size: 0.85em;
+}
+p {
+  margin: 0;
+}
+
+/* Before sign-in */
+.auth {
+  box-sizing: border-box;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 1.25rem;
+  min-height: 100dvh;
+  padding: clamp(1.5rem, 8vh, 5rem) 1rem 2rem;
+}
+.auth > * {
+  width: min(24rem, 100%);
+}
+.auth > .auth-card.wide {
+  width: min(42rem, 100%);
+}
+.auth-brand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  color: var(--bz-color-primary);
+}
+.auth-brand strong {
+  color: var(--bz-color-fg);
+}
+.auth-card {
+  box-sizing: border-box;
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--bz-color-surface);
+  border: 1px solid var(--bz-color-border);
+  border-radius: calc(var(--bz-radius) * 1.5);
+  box-shadow: 0 10px 28px rgb(15 20 30 / 0.06);
+}
+.auth-card h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  text-align: center;
+}
+.link-button {
+  justify-self: center;
+  padding: 0.25rem;
+  font: inherit;
+  color: var(--bz-color-primary);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.link-button:hover {
+  text-decoration: underline;
+}
+.steps {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  color: var(--bz-color-fg-muted);
+}
+.qr {
+  display: flex;
+  justify-content: center;
+}
+.qr img {
+  width: 11rem;
+  height: 11rem;
+  padding: 0.5rem;
+  background: #fff;
+  border-radius: var(--bz-radius);
+}
+.secret {
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+}
+.secret code,
+.codes code {
+  font: 600 0.95rem / 1.4 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+.codes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding: 0.75rem 1rem;
+  list-style: none;
+  background: var(--bz-color-bg);
+  border-radius: var(--bz-radius);
+}
+
+/* Header context button: hidden on narrow screens (the user menu has it too). */
+@media (max-width: 720px) {
+  .context-button {
+    display: none;
+  }
+}

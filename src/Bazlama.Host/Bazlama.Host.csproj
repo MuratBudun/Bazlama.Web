@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\Bazlama.Kernel\Bazlama.Kernel.csproj" />
+    <ProjectReference Include="..\Bazlama.Kernel.Data\Bazlama.Kernel.Data.csproj" />
+    <ProjectReference Include="..\Bazlama.Data.SqlServer\Bazlama.Data.SqlServer.csproj" />
+    <ProjectReference Include="..\Bazlama.Data.PostgreSql\Bazlama.Data.PostgreSql.csproj" />
+    <ProjectReference Include="..\Bazlama.Data.Sqlite\Bazlama.Data.Sqlite.csproj" />
+    <ProjectReference Include="..\Bazlama.Modules.Identity\Bazlama.Modules.Identity.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@bazlama/core": ["../../Bazlama.Web.Component/next/packages/core/src/index.ts"],
+      "@bazlama/headless": ["../../Bazlama.Web.Component/next/packages/headless/src/index.ts"],
+      "@bazlama/icons": ["../../Bazlama.Web.Component/next/packages/icons/src/index.ts"],
+      "@bazlama/router": ["../../Bazlama.Web.Component/next/packages/router/src/index.ts"],
+      "@bazlama/themes/builder": ["../../Bazlama.Web.Component/next/packages/themes/src/builder/index.ts"]
+    }
+  },
+  "include": ["src", "tests"]
+}

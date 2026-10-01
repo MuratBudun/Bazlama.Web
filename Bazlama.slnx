@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Bazlama.Kernel/Bazlama.Kernel.csproj" />
+    <Project Path="src/Bazlama.Kernel.Data/Bazlama.Kernel.Data.csproj" />
+    <Project Path="src/Bazlama.Data.SqlServer/Bazlama.Data.SqlServer.csproj" />
+    <Project Path="src/Bazlama.Data.PostgreSql/Bazlama.Data.PostgreSql.csproj" />
+    <Project Path="src/Bazlama.Data.Sqlite/Bazlama.Data.Sqlite.csproj" />
+    <Project Path="src/Bazlama.Modules.Identity/Bazlama.Modules.Identity.csproj" />
+    <Project Path="src/Bazlama.Host/Bazlama.Host.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Bazlama.Tests/Bazlama.Tests.csproj" />
+  </Folder>
+</Solution>
