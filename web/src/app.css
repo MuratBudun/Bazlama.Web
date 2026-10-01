@@ -13,6 +13,11 @@ body {
   gap: 1rem;
   padding: 1.25rem 1.5rem 2rem;
 }
+/* A list page whose grid fills the height (data-shell-fill needs a flex column). */
+.page:has(> [data-shell-fill]) {
+  display: flex;
+  flex-direction: column;
+}
 .page-head {
   display: flex;
   align-items: center;
@@ -153,4 +158,85 @@ p {
   .context-button {
     display: none;
   }
+}
+
+/* Management */
+.nowrap {
+  flex-wrap: nowrap;
+}
+.narrow {
+  max-width: 48rem;
+}
+.page h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.page-head .muted {
+  align-self: baseline;
+}
+bz-data-grid.clickable [data-part="row"] {
+  cursor: pointer;
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
+  gap: 0.75rem;
+}
+.card-link {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1rem;
+  color: inherit;
+  text-decoration: none;
+  background: var(--bz-color-surface);
+  border: 1px solid var(--bz-color-border);
+  border-radius: calc(var(--bz-radius) * 1.5);
+}
+.card-link:hover {
+  border-color: var(--bz-color-primary);
+}
+.card-link > bz-icon,
+.card-link > svg {
+  color: var(--bz-color-primary);
+}
+.checks {
+  display: grid;
+  gap: 0.6rem;
+}
+.org-company {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  gap: 1.5rem;
+}
+.org-locations {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.org-location {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--bz-color-border);
+  border-radius: var(--bz-radius);
+}
+.chips {
+  gap: 0.35rem;
+}
+.chips bz-chip {
+  cursor: pointer;
+}
+.grow {
+  flex: 1;
+}
+pre.json {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  overflow: auto;
+  max-height: 24rem;
+  font: 0.85rem / 1.45 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  background: var(--bz-color-bg);
+  border-radius: var(--bz-radius);
 }

@@ -3,6 +3,7 @@ using Bazlama.Host;
 using Bazlama.Kernel;
 using Bazlama.Kernel.Data;
 using Bazlama.Modules.Identity;
+using Bazlama.Modules.Management;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,7 +11,7 @@ var database = builder.Configuration.GetSection("Database").Get<DatabaseOptions>
 var mode = builder.Configuration.GetValue("Platform:EnvironmentMode", EnvironmentMode.Development);
 
 builder.Services.AddKernelDatabase(database);
-builder.Services.AddIdentityModule();
+builder.Services.AddIdentityModule(builder.Configuration["Platform:CookieName"] ?? "bazlama.session");
 
 var app = builder.Build();
 
@@ -23,6 +24,7 @@ version = version.Split('+')[0];
 
 app.UseIdentityModule();
 app.MapAuthEndpoints();
+app.MapManagementEndpoints();
 
 var api = app.MapGroup("/api");
 api.MapGet("/system/info", (IDatabaseProvider provider) =>

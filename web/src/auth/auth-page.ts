@@ -1,6 +1,7 @@
 import { computed, html, signal, type TemplateResult } from "@bazlama/core"
 import { icon } from "@bazlama/headless"
 import { api, errorText } from "../api"
+import { PASSWORD_TR } from "../labels"
 import { me, refreshMe, type Me } from "../session"
 
 /*
@@ -220,9 +221,9 @@ function passwordStep() {
     html`<form class="stack" @submit=${submit}>
       <p class="muted">Devam etmeden önce parolanızı değiştirmeniz gerekiyor.</p>
       ${() => (errors().length ? html`<bz-alert variant="danger">${errors().join(" ")}</bz-alert>` : null)}
-      <bz-password label="Yeni parola" required strength autocomplete="new-password" .value=${next}
+      <bz-password .labels=${PASSWORD_TR} label="Yeni parola" required strength autocomplete="new-password" .value=${next}
         @input=${(e: Event) => next.set((e.currentTarget as HTMLInputElement).value)}></bz-password>
-      <bz-password label="Yeni parola (tekrar)" required autocomplete="new-password" .value=${again}
+      <bz-password .labels=${PASSWORD_TR} label="Yeni parola (tekrar)" required autocomplete="new-password" .value=${again}
         @input=${(e: Event) => again.set((e.currentTarget as HTMLInputElement).value)}></bz-password>
       <div class="row"><span class="spacer"></span><bz-button type="submit" variant="primary" ?loading=${busy}>Kaydet ve devam et</bz-button></div>
     </form>`,
@@ -277,9 +278,9 @@ function setupStep() {
       <bz-form-layout columns="2" min-column-width="12rem">
         <bz-form-section heading="Yönetici">
           ${field("Kullanıcı adı", f.userName)} ${field("Ad soyad", f.displayName)}
-          <bz-password label="Parola" required strength autocomplete="new-password" .value=${f.password}
+          <bz-password .labels=${PASSWORD_TR} label="Parola" required strength autocomplete="new-password" .value=${f.password}
             @input=${(e: Event) => f.password.set((e.currentTarget as HTMLInputElement).value)}></bz-password>
-          <bz-password label="Parola (tekrar)" required autocomplete="new-password" .value=${f.again}
+          <bz-password .labels=${PASSWORD_TR} label="Parola (tekrar)" required autocomplete="new-password" .value=${f.again}
             @input=${(e: Event) => f.again.set((e.currentTarget as HTMLInputElement).value)}></bz-password>
         </bz-form-section>
         <bz-form-section heading="Kurum">

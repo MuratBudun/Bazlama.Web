@@ -6,5 +6,6 @@
     <ProjectReference Include="..\Bazlama.Data.PostgreSql\Bazlama.Data.PostgreSql.csproj" />
     <ProjectReference Include="..\Bazlama.Data.Sqlite\Bazlama.Data.Sqlite.csproj" />
     <ProjectReference Include="..\Bazlama.Modules.Identity\Bazlama.Modules.Identity.csproj" />
+    <ProjectReference Include="..\Bazlama.Modules.Management\Bazlama.Modules.Management.csproj" />
   </ItemGroup>
 </Project>

@@ -9,6 +9,7 @@ import { errorText } from "./api"
 import { authPage, enrollStep } from "./auth/auth-page"
 import { chooseContext } from "./auth/context-dialog"
 import { changePassword } from "./auth/password-dialog"
+import { canManage, managementNav, managementRoutes } from "./management"
 import { areaPage } from "./pages/area"
 import homePage from "./pages/home"
 import { can, contextText, isActive, logout, me, refreshMe } from "./session"
@@ -28,7 +29,7 @@ const router = createRouter({
     { path: "/", page: homePage },
     { path: "/runtime", page: areaPage("Uygulamalar", "layers", "Yayınlanmış app'ler burada çalışacak (Faz 2).") },
     { path: "/development", page: areaPage("Geliştirme", "code", "Entity, liste, form tasarımı ve kod editörü (Faz 3–4).") },
-    { path: "/management", page: areaPage("Yönetim", "settings", "Kullanıcılar, gruplar, firma/lokasyon/plant/dönem.") },
+    ...managementRoutes,
   ],
 })
 
@@ -39,13 +40,14 @@ const nav = computed<TreeItem[]>(() => {
     { id: "/runtime", label: "Uygulamalar", icon: "layers", href: router.href("/runtime") },
   ]
   if (can("development.access")) items.push({ id: "/development", label: "Geliştirme", icon: "code", href: router.href("/development") })
-  if (["system.users", "system.groups", "system.organization", "system.sessions", "system.settings", "system.audit"].some(can))
-    items.push({ id: "/management", label: "Yönetim", icon: "settings", href: router.href("/management") })
+  if (canManage()) items.push(managementNav(router))
   return items
 })
+/** The deepest menu item the current path is under ("/management/users/42" → Kullanıcılar). */
 const current = computed(() => {
   const path = router.current()?.path ?? "/"
-  return nav().find((n) => n.id !== "/" && path.startsWith(n.id))?.id ?? "/"
+  const all = nav().flatMap((n) => [n, ...(n.children ?? [])])
+  return all.filter((n) => n.href && (path === n.id || path.startsWith(`${n.id}/`))).sort((a, b) => b.id.length - a.id.length)[0]?.id ?? ""
 })
 
 const onUserMenu = async (e: CustomEvent<{ value: string }>) => {
@@ -74,7 +76,7 @@ const shell = () => html`
       <bz-menu-item slot="user-menu" value="logout" icon="log-out">Çıkış yap</bz-menu-item>
     </bz-header>
     <nav slot="start" aria-label="Menü">
-      <bz-tree label="Menü" selection="leaf" .items=${nav} .value=${current}></bz-tree>
+      <bz-tree label="Menü" selection="leaf" .items=${nav} .value=${current} .expanded=${["/management"]}></bz-tree>
     </nav>
     <bz-outlet></bz-outlet>
   </bz-shell>

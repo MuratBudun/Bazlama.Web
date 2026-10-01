@@ -16,7 +16,11 @@ public static class IdentityModule
     public const string SessionClaim = "sid";
     public const string LoginRateLimit = "login";
 
-    public static IServiceCollection AddIdentityModule(this IServiceCollection services)
+    /// <param name="cookieName">
+    /// Cookies are per host, not per port: two installations on one server (test and
+    /// production on different ports) need different names, or they sign each other out.
+    /// </param>
+    public static IServiceCollection AddIdentityModule(this IServiceCollection services, string cookieName = "bazlama.session")
     {
         services.AddMemoryCache();
         services.TryAddTimeProvider();
@@ -33,7 +37,7 @@ public static class IdentityModule
 
         services.AddAuthentication(Scheme).AddCookie(Scheme, o =>
         {
-            o.Cookie.Name = "bazlama.session";
+            o.Cookie.Name = cookieName;
             o.Cookie.HttpOnly = true;
             o.Cookie.SameSite = SameSiteMode.Strict;
             o.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;

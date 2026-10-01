@@ -47,6 +47,10 @@ npm run build        # outputs to src/Bazlama.Host/wwwroot (gitignored), served 
   - Every non-GET `/api` call must send the `X-Bazlama-Request` header (CSRF guard). The web client's `api.ts` does this.
   - Errors return as `{ errors: [...] }` with Turkish, user-facing messages.
   - Use the injected `TimeProvider`, never `DateTime.Now`. The tests control time with `TestClock` (`tests/Bazlama.Tests/TestHost.cs`).
+- **Management API.** `src/Bazlama.Modules.Management` serves `/api/management/*`: users, groups, organization, sessions, security settings and audit.
+  - Each area sits behind its own `system.*` permission.
+  - The guards stop admins from locking themselves out: no self-deactivation, no leaving Administrators, and the `*` permission stays on the system group.
+  - The web pages are in `web/src/management/`. They share helpers in `ui.ts` (`formDialog`, `loader`, bound fields).
 - **Audit.** `AuditInterceptor` writes an `AuditEvent` for every change to an `IAudited` entity in the same `SaveChanges`. It masks secrets. Security events (logins, lockouts, MFA) are written explicitly by `AuthService`.
 - **App data (planned, Faz 2).** App tables will be generated from metadata as real tables (`app_<appKey>_<entity>`), not mapped through EF.
   - The data engine enforces company / location / plant / period scoping, so app code cannot forget it.
