@@ -7,5 +7,6 @@
     <ProjectReference Include="..\Bazlama.Data.Sqlite\Bazlama.Data.Sqlite.csproj" />
     <ProjectReference Include="..\Bazlama.Modules.Identity\Bazlama.Modules.Identity.csproj" />
     <ProjectReference Include="..\Bazlama.Modules.Management\Bazlama.Modules.Management.csproj" />
+    <ProjectReference Include="..\Bazlama.Modules.Runtime\Bazlama.Modules.Runtime.csproj" />
   </ItemGroup>
 </Project>

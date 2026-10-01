@@ -1,5 +1,5 @@
-import { html, signal, type Signal, type TemplateResult } from "@bazlama/core"
-import { dialogs, toast, type GridColumn } from "@bazlama/headless"
+import { html, signal, untrack, type Signal, type TemplateResult } from "@bazlama/core"
+import { dialogs, toast, type GridColumn, type Sort } from "@bazlama/headless"
 import { errorText } from "../api"
 import { GRID_TR, PASSWORD_TR } from "../labels"
 
@@ -107,12 +107,16 @@ export function loader<T>(fetch: () => Promise<T>, loaded?: (data: T) => void) {
   return { data, error, reload }
 }
 
-/** Error banner or "loading" while a loader has no data. */
+/**
+ * Error banner or "loading" while a loader has no data, then `body`. The body is rebuilt only
+ * when the data changes: signals it reads while it is being built (initial form values, a
+ * search box) are not tracked, so typing into a field does not rebuild the page.
+ */
 export function loading(l: { data: () => unknown; error: () => string }, body: () => unknown) {
   return () => {
     if (l.error()) return html`<bz-alert variant="danger">${l.error()}</bz-alert>`
     if (l.data() === null) return html`<span class="muted">Yükleniyor…</span>`
-    return body()
+    return untrack(body)
   }
 }
 
@@ -134,6 +138,9 @@ export function dataGrid<R extends object>(o: {
   empty?: string
   /** Takes the page's remaining height (a list page); otherwise up to 32rem. */
   fill?: boolean
+  /** Sorting done by the server: the grid only shows `sort` and reports clicks. */
+  sort?: { value: () => Sort; change: (sort: Sort) => void }
+  loading?: () => boolean
 }) {
   const open = (e: CustomEvent<{ row: R }>) => {
     if (!o.onOpen) return
@@ -142,6 +149,8 @@ export function dataGrid<R extends object>(o: {
   }
   return html`<bz-data-grid id=${o.id ?? null} label=${o.label} striped ?data-shell-fill=${!!o.fill} class=${o.onOpen ? "clickable" : ""} row-key=${o.rowKey ?? "id"}
     persist=${o.persist ? `bazlama-${o.persist}` : null} .labels=${GRID_TR} .columns=${o.columns} .rows=${o.rows}
+    sort-mode=${o.sort ? "manual" : "client"} .sort=${o.sort?.value ?? null} ?loading=${o.loading ?? false}
+    @sort=${(e: CustomEvent<{ sort: Sort }>) => o.sort?.change(e.detail.sort)}
     @row-click=${open} @row-activate=${(e: CustomEvent<{ row: R; via: string }>) => e.detail.via === "keyboard" && open(e)}>
     <span slot="empty" class="muted">${o.empty ?? "Kayıt yok."}</span>
   </bz-data-grid>`

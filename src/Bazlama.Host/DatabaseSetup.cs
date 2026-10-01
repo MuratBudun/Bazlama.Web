@@ -1,6 +1,8 @@
 using Bazlama.Data.PostgreSql;
 using Bazlama.Data.Sqlite;
 using Bazlama.Data.SqlServer;
+using Bazlama.Engine;
+using Bazlama.Engine.Sql;
 using Bazlama.Kernel.Auditing;
 using Bazlama.Kernel.Data;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +24,16 @@ public static class DatabaseSetup
             throw new InvalidOperationException("Database:ConnectionString is empty.");
 
         services.AddSingleton(provider);
+        services.AddSingleton<SqlDialect>(provider.Name switch
+        {
+            "SqlServer" => new SqlServerDialect(),
+            "PostgreSql" => new PostgreSqlDialect(),
+            _ => new SqliteDialect(),
+        });
+        services.AddScoped<AppRegistry>();
+        services.AddScoped<AppInstaller>();
+        services.AddScoped<DataService>();
+        services.AddScoped<PermissionCatalog>();
         services.AddDbContext<KernelDbContext>((sp, o) =>
         {
             provider.Configure(o, options.ConnectionString);

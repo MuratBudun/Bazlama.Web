@@ -1,4 +1,5 @@
 using Bazlama.Kernel;
+using Bazlama.Kernel.Apps;
 using Bazlama.Kernel.Auditing;
 using Bazlama.Kernel.Identity;
 using Bazlama.Kernel.Organization;
@@ -30,6 +31,9 @@ public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbCont
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+
+    public DbSet<InstalledApp> Apps => Set<InstalledApp>();
+    public DbSet<AppVersionHistory> AppVersions => Set<AppVersionHistory>();
 
     /// <summary>Data Protection keys (TOTP secrets, cookies): in the database, so every node and restart shares them.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -156,6 +160,22 @@ public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbCont
             e.Property(x => x.IpAddress).HasMaxLength(64);
             e.HasIndex(x => x.At);
             e.HasIndex(x => new { x.EntityType, x.EntityId });
+        });
+
+        model.Entity<InstalledApp>(e =>
+        {
+            e.ToTable("sys_apps");
+            e.Property(x => x.Key).HasMaxLength(Code);
+            e.Property(x => x.Name).HasMaxLength(Name);
+            e.Property(x => x.Version).HasMaxLength(Code);
+            e.HasIndex(x => x.Key).IsUnique();
+        });
+        model.Entity<AppVersionHistory>(e =>
+        {
+            e.ToTable("sys_app_versions");
+            e.Property(x => x.Version).HasMaxLength(Code);
+            e.HasOne<InstalledApp>().WithMany().HasForeignKey(x => x.AppId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.AppId);
         });
 
         model.Entity<DataProtectionKey>().ToTable("sys_data_protection_keys");

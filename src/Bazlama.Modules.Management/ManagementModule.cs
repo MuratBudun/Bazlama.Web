@@ -17,6 +17,7 @@ public static class ManagementModule
         group.MapSessionEndpoints();
         group.MapSettingsEndpoints();
         group.MapAuditEndpoints();
+        group.MapAppEndpoints();
         return app;
     }
 }

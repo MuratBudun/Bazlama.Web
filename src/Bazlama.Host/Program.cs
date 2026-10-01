@@ -4,6 +4,7 @@ using Bazlama.Kernel;
 using Bazlama.Kernel.Data;
 using Bazlama.Modules.Identity;
 using Bazlama.Modules.Management;
+using Bazlama.Modules.Runtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ version = version.Split('+')[0];
 app.UseIdentityModule();
 app.MapAuthEndpoints();
 app.MapManagementEndpoints();
+app.MapRuntimeEndpoints();
 
 var api = app.MapGroup("/api");
 api.MapGet("/system/info", (IDatabaseProvider provider) =>

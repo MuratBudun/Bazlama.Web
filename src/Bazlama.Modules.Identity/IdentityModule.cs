@@ -28,6 +28,7 @@ public static class IdentityModule
 
         services.AddScoped<CurrentSession>();
         services.AddScoped<IAuditActor>(sp => sp.GetRequiredService<CurrentSession>());
+        services.AddScoped<Bazlama.Kernel.IRequestContext>(sp => sp.GetRequiredService<CurrentSession>());
         services.AddScoped<SessionStore>();
         services.AddScoped<SecuritySettingsStore>();
         services.AddScoped<PasswordService>();

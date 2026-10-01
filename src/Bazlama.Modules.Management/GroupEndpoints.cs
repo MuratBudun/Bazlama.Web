@@ -1,3 +1,4 @@
+using Bazlama.Engine;
 using Bazlama.Kernel.Data;
 using Bazlama.Kernel.Identity;
 using Bazlama.Modules.Identity;
@@ -13,7 +14,6 @@ public sealed record GroupRow(Guid Id, string Code, string Name, string? Descrip
 public sealed record GroupSave(string Code, string Name, string? Description, bool RequireMfa);
 public sealed record MemberItem(Guid UserId, Guid? LocationId);
 public sealed record MemberRow(Guid UserId, string UserName, string DisplayName, Guid? LocationId);
-public sealed record PermissionInfo(string Key, string Title);
 
 static class GroupEndpoints
 {
@@ -21,7 +21,7 @@ static class GroupEndpoints
     {
         var groups = api.MapGroup("/groups").RequirePermission(Permissions.Groups);
 
-        groups.MapGet("/permissions", () => Permissions.Catalog.Select(p => new PermissionInfo(p.Key, p.Title)));
+        groups.MapGet("/permissions", (PermissionCatalog catalog, CancellationToken ct) => catalog.AllAsync(ct));
 
         groups.MapGet("/", async (KernelDbContext db, CancellationToken ct) =>
         {
@@ -67,11 +67,11 @@ static class GroupEndpoints
             return result;
         });
 
-        groups.MapPut("/{id:guid}/permissions", async (Guid id, List<string> permissions, KernelDbContext db, CancellationToken ct) =>
+        groups.MapPut("/{id:guid}/permissions", async (Guid id, List<string> permissions, KernelDbContext db, PermissionCatalog catalog, CancellationToken ct) =>
         {
             var group = await db.Groups.FirstOrDefaultAsync(g => g.Id == id, ct);
             if (group is null) return Results.NotFound();
-            var known = Permissions.Catalog.Select(p => p.Key).ToHashSet();
+            var known = (await catalog.AllAsync(ct)).Select(p => p.Key).ToHashSet();
             var wanted = permissions.Where(p => !Blank(p)).Select(p => p.Trim()).ToHashSet();
             if (wanted.FirstOrDefault(p => !known.Contains(p)) is { } unknown) return Errors($"Bilinmeyen izin: {unknown}");
             if (group.IsSystem && !wanted.Contains(Permissions.All)) return Errors("Yöneticiler grubunun 'Tüm yetkiler' izni kaldırılamaz.");

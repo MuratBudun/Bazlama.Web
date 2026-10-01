@@ -12,6 +12,7 @@ public static class Permissions
     public const string Sessions = "system.sessions";
     public const string Settings = "system.settings";
     public const string Audit = "system.audit";
+    public const string Apps = "system.apps";
     public const string Development = "development.access";
 
     public static readonly IReadOnlyList<(string Key, string Title)> Catalog =
@@ -23,6 +24,7 @@ public static class Permissions
         (Sessions, "Oturumları gör ve sonlandır"),
         (Settings, "Güvenlik ayarlarını yönet"),
         (Audit, "Audit kayıtlarını gör"),
+        (Apps, "Uygulamaları kur ve güncelle"),
         (Development, "Geliştirme alanını kullan"),
     ];
 

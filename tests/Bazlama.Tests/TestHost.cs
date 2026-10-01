@@ -27,11 +27,12 @@ public sealed class TestHost : IAsyncDisposable
     public const string AdminUser = "admin";
     public const string AdminPassword = "Bazlama2026x";
 
-    public TestHost(string environmentMode = "Development")
+    /// <param name="provider">Sqlite (a temporary file) or a provider with its connection string (a test container).</param>
+    public TestHost(string environmentMode = "Development", string provider = "Sqlite", string? connectionString = null)
     {
         Factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b
-            .UseSetting("Database:Provider", "Sqlite")
-            .UseSetting("Database:ConnectionString", $"Data Source={dbPath};Pooling=False")
+            .UseSetting("Database:Provider", provider)
+            .UseSetting("Database:ConnectionString", connectionString ?? $"Data Source={dbPath};Pooling=False")
             .UseSetting("Platform:EnvironmentMode", environmentMode)
             .ConfigureServices(s => s.AddSingleton<TimeProvider>(Clock)));
     }

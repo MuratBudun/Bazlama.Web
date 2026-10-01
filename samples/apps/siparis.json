@@ -1,0 +1,107 @@
+{
+  "key": "siparis",
+  "name": "Sipariş Takibi",
+  "version": "1.0.0",
+  "description": "Örnek app: müşteriler, ürünler, siparişler ve sipariş kalemleri.",
+  "icon": "cart",
+  "entities": [
+    {
+      "key": "musteri",
+      "name": "Müşteri",
+      "pluralName": "Müşteriler",
+      "icon": "users",
+      "scope": "company",
+      "titleField": "unvan",
+      "fields": [
+        { "key": "unvan", "label": "Unvan", "type": "text", "required": true },
+        { "key": "vergi_no", "label": "Vergi no", "type": "text", "maxLength": 20 },
+        { "key": "sehir", "label": "Şehir", "type": "text", "maxLength": 50 },
+        {
+          "key": "segment", "label": "Segment", "type": "choice",
+          "choices": [
+            { "value": "kurumsal", "label": "Kurumsal" },
+            { "value": "kobi", "label": "KOBİ" },
+            { "value": "bireysel", "label": "Bireysel" }
+          ]
+        },
+        { "key": "aktif", "label": "Aktif", "type": "boolean" },
+        { "key": "notlar", "label": "Notlar", "type": "longText" }
+      ],
+      "list": { "columns": ["unvan", "vergi_no", "sehir", "segment", "aktif"], "sortField": "unvan" },
+      "form": {
+        "sections": [
+          { "title": "Genel", "fields": ["unvan", "vergi_no", "sehir", "segment", "aktif"] },
+          { "title": "Notlar", "fields": ["notlar"], "columns": 1 }
+        ]
+      }
+    },
+    {
+      "key": "urun",
+      "name": "Ürün",
+      "pluralName": "Ürünler",
+      "icon": "box",
+      "scope": "global",
+      "titleField": "ad",
+      "fields": [
+        { "key": "kod", "label": "Kod", "type": "text", "maxLength": 30, "required": true },
+        { "key": "ad", "label": "Ad", "type": "text", "required": true },
+        {
+          "key": "birim", "label": "Birim", "type": "choice", "required": true,
+          "choices": [
+            { "value": "adet", "label": "Adet" },
+            { "value": "kg", "label": "Kilogram" },
+            { "value": "lt", "label": "Litre" }
+          ]
+        },
+        { "key": "fiyat", "label": "Liste fiyatı", "type": "decimal", "precision": 18, "scale": 2 }
+      ],
+      "list": { "columns": ["kod", "ad", "birim", "fiyat"], "sortField": "kod" }
+    },
+    {
+      "key": "siparis",
+      "name": "Sipariş",
+      "pluralName": "Siparişler",
+      "icon": "cart",
+      "scope": "location",
+      "periodBound": true,
+      "titleField": "siparis_no",
+      "fields": [
+        { "key": "siparis_no", "label": "Sipariş no", "type": "text", "maxLength": 30, "required": true },
+        { "key": "musteri", "label": "Müşteri", "type": "reference", "reference": "musteri", "required": true },
+        { "key": "tarih", "label": "Sipariş tarihi", "type": "date", "required": true },
+        { "key": "teslim", "label": "Teslim zamanı", "type": "dateTime" },
+        {
+          "key": "durum", "label": "Durum", "type": "choice", "required": true,
+          "choices": [
+            { "value": "taslak", "label": "Taslak" },
+            { "value": "onaylandi", "label": "Onaylandı" },
+            { "value": "sevk", "label": "Sevk edildi" },
+            { "value": "iptal", "label": "İptal" }
+          ]
+        },
+        { "key": "aciklama", "label": "Açıklama", "type": "longText" }
+      ],
+      "list": { "columns": ["siparis_no", "musteri", "tarih", "durum", "teslim"], "sortField": "tarih", "sortDescending": true },
+      "form": {
+        "sections": [
+          { "title": "Sipariş", "fields": ["siparis_no", "musteri", "tarih", "teslim", "durum"] },
+          { "title": "Açıklama", "fields": ["aciklama"], "columns": 1 }
+        ]
+      }
+    },
+    {
+      "key": "kalem",
+      "name": "Sipariş kalemi",
+      "pluralName": "Kalemler",
+      "parent": "siparis",
+      "fields": [
+        { "key": "urun", "label": "Ürün", "type": "reference", "reference": "urun", "required": true },
+        { "key": "miktar", "label": "Miktar", "type": "decimal", "precision": 18, "scale": 3, "required": true },
+        { "key": "birim_fiyat", "label": "Birim fiyat", "type": "decimal", "precision": 18, "scale": 2 },
+        { "key": "iskonto", "label": "İskonto (%)", "type": "integer" },
+        { "key": "not", "label": "Not", "type": "text" }
+      ],
+      "list": { "columns": ["urun", "miktar", "birim_fiyat", "iskonto", "not"] }
+    }
+  ]
+}

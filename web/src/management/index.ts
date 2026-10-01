@@ -2,6 +2,7 @@ import { html } from "@bazlama/core"
 import { icon, type TreeItem } from "@bazlama/headless"
 import { definePage, type RouteRecord, type Router } from "@bazlama/router"
 import { can } from "../session"
+import { appDetailPage, appsPage } from "./apps"
 import { groupPage, groupsPage } from "./groups"
 import { organizationPage } from "./organization"
 import { auditPage, sessionsPage, settingsPage } from "./system"
@@ -15,6 +16,7 @@ export const SECTIONS = [
   { path: "/management/sessions", label: "Oturumlar", icon: "clock", permission: "system.sessions", text: "Açık oturumlar; oturum sonlandırma." },
   { path: "/management/settings", label: "Güvenlik ayarları", icon: "lock", permission: "system.settings", text: "Parola kuralları, hesap kilidi, oturum ve MFA." },
   { path: "/management/audit", label: "Audit", icon: "file-text", permission: "system.audit", text: "Güvenlik olayları ve veri değişiklikleri." },
+  { path: "/management/apps", label: "Uygulamalar", icon: "layers", permission: "system.apps", text: "Uygulama kurma ve güncelleme; versiyon geçmişi." },
 ] as const
 
 export const canManage = () => SECTIONS.some((s) => can(s.permission))
@@ -43,6 +45,8 @@ export const managementRoutes: RouteRecord[] = [
   { path: "/management/sessions", page: sessionsPage },
   { path: "/management/settings", page: settingsPage },
   { path: "/management/audit", page: auditPage },
+  { path: "/management/apps", page: appsPage },
+  { path: "/management/apps/:key", page: appDetailPage, remount: true },
 ]
 
 /** The menu node with the sections the user may open. */

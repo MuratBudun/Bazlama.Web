@@ -1,4 +1,4 @@
-import type { DataGridLabels, PasswordLabels } from "@bazlama/headless"
+import type { DataGridLabels, PaginationLabels, PasswordLabels } from "@bazlama/headless"
 
 // Turkish texts for the components (their defaults are English).
 
@@ -27,5 +27,19 @@ export const GRID_TR: Partial<DataGridLabels> = {
   hide: "Sütunu gizle",
   columns: "Sütunlar",
   reset: "Varsayılana dön",
+  empty: "Kayıt yok",
+}
+
+export const PAGINATION_TR: Partial<PaginationLabels> = {
+  nav: "Sayfalama",
+  first: "İlk sayfa",
+  previous: "Önceki sayfa",
+  next: "Sonraki sayfa",
+  last: "Son sayfa",
+  page: (n) => `Sayfa ${n}`,
+  pageInput: "Sayfa",
+  of: (n) => `/ ${n}`,
+  pageSize: "Sayfa başına",
+  info: (a, b, t) => `${a}–${b} / ${t}`,
   empty: "Kayıt yok",
 }

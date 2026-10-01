@@ -240,3 +240,54 @@ pre.json {
   background: var(--bz-color-bg);
   border-radius: var(--bz-radius);
 }
+
+/* Runtime forms */
+.field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.field-error {
+  font-size: 0.85em;
+  color: var(--bz-color-danger);
+}
+.form-heading {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+  color: var(--bz-color-fg-muted);
+}
+.record-form {
+  max-width: 64rem;
+}
+.yes {
+  color: var(--bz-color-success, var(--bz-color-primary));
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.plan h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+.changes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9em;
+}
+.changes li {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.changes li.destructive {
+  color: var(--bz-color-danger);
+  font-weight: 600;
+}

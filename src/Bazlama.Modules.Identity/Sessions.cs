@@ -28,7 +28,7 @@ public sealed record SessionSnapshot(
     int PermissionVersion);
 
 /// <summary>The current request's session (filled by <see cref="SessionMiddleware"/>). Also the audit actor.</summary>
-public sealed class CurrentSession : IAuditActor
+public sealed class CurrentSession : IAuditActor, Bazlama.Kernel.IRequestContext
 {
     public SessionSnapshot? Snapshot { get; set; }
     public string? Ip { get; set; }
@@ -36,10 +36,18 @@ public sealed class CurrentSession : IAuditActor
     public bool IsActive => Snapshot?.Status == SessionStatus.Active;
     public bool Has(string permission) => IsActive && Permissions.Grants(Snapshot!.Permissions, permission);
 
-    Guid? IAuditActor.UserId => Snapshot?.UserId;
-    string? IAuditActor.UserName => Snapshot?.UserName;
-    Guid? IAuditActor.SessionId => Snapshot?.SessionId;
-    string? IAuditActor.IpAddress => Ip;
+    public Guid? UserId => Snapshot?.UserId;
+    public string? UserName => Snapshot?.UserName;
+    public Guid? SessionId => Snapshot?.SessionId;
+    public string? IpAddress => Ip;
+
+    // Only an active session has a context.
+    public Guid? CompanyId => IsActive ? Snapshot!.CompanyId : null;
+    public Guid? LocationId => IsActive ? Snapshot!.LocationId : null;
+    public Guid? PlantId => IsActive ? Snapshot!.PlantId : null;
+    public Guid? PeriodId => IsActive ? Snapshot!.PeriodId : null;
+
+    public bool HasPermission(string permission) => Has(permission);
 }
 
 public sealed class SessionStore(KernelDbContext db, IMemoryCache cache, TimeProvider time)

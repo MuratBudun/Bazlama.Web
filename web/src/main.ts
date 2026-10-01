@@ -12,6 +12,8 @@ import { changePassword } from "./auth/password-dialog"
 import { canManage, managementNav, managementRoutes } from "./management"
 import { areaPage } from "./pages/area"
 import homePage from "./pages/home"
+import { loadRuntimeApps } from "./runtime/api"
+import { appPage, listPage, recordPage, runtimeHome, runtimeNav } from "./runtime/pages"
 import { can, contextText, isActive, logout, me, refreshMe } from "./session"
 
 /*
@@ -27,28 +29,38 @@ const router = createRouter({
   titleTemplate: (t) => `${t} · Bazlama`,
   routes: [
     { path: "/", page: homePage },
-    { path: "/runtime", page: areaPage("Uygulamalar", "layers", "Yayınlanmış app'ler burada çalışacak (Faz 2).") },
+    { path: "/runtime", page: runtimeHome },
+    { path: "/runtime/:app", page: appPage, remount: true },
+    { path: "/runtime/:app/:entity", page: listPage, remount: true },
+    { path: "/runtime/:app/:entity/:id", page: recordPage, remount: true },
     { path: "/development", page: areaPage("Geliştirme", "code", "Entity, liste, form tasarımı ve kod editörü (Faz 3–4).") },
     ...managementRoutes,
   ],
 })
 
+const appsNav = runtimeNav(router.href)
+
 const nav = computed<TreeItem[]>(() => {
   me() // permissions decide the menu
+  const apps = appsNav()
   const items: TreeItem[] = [
     { id: "/", label: "Başlangıç", icon: "home", href: router.href("/") },
-    { id: "/runtime", label: "Uygulamalar", icon: "layers", href: router.href("/runtime") },
+    apps.length
+      ? { id: "/runtime", label: "Uygulamalar", icon: "layers", children: apps }
+      : { id: "/runtime", label: "Uygulamalar", icon: "layers", href: router.href("/runtime") },
   ]
   if (can("development.access")) items.push({ id: "/development", label: "Geliştirme", icon: "code", href: router.href("/development") })
   if (canManage()) items.push(managementNav(router))
   return items
 })
+const flatten = (items: TreeItem[]): TreeItem[] => items.flatMap((n) => [n, ...flatten(n.children ?? [])])
 /** The deepest menu item the current path is under ("/management/users/42" → Kullanıcılar). */
 const current = computed(() => {
   const path = router.current()?.path ?? "/"
-  const all = nav().flatMap((n) => [n, ...(n.children ?? [])])
-  return all.filter((n) => n.href && (path === n.id || path.startsWith(`${n.id}/`))).sort((a, b) => b.id.length - a.id.length)[0]?.id ?? ""
+  return flatten(nav()).filter((n) => n.href && (path === n.id || path.startsWith(`${n.id}/`))).sort((a, b) => b.id.length - a.id.length)[0]?.id ?? ""
 })
+/** Groups stay open: apps and management. */
+const expanded = computed(() => ["/runtime", "/management", ...appsNav().map((a) => a.id)])
 
 const onUserMenu = async (e: CustomEvent<{ value: string }>) => {
   try {
@@ -76,7 +88,7 @@ const shell = () => html`
       <bz-menu-item slot="user-menu" value="logout" icon="log-out">Çıkış yap</bz-menu-item>
     </bz-header>
     <nav slot="start" aria-label="Menü">
-      <bz-tree label="Menü" selection="leaf" .items=${nav} .value=${current} .expanded=${["/management"]}></bz-tree>
+      <bz-tree label="Menü" selection="leaf" .items=${nav} .value=${current} .expanded=${expanded}></bz-tree>
     </nav>
     <bz-outlet></bz-outlet>
   </bz-shell>
@@ -100,6 +112,11 @@ effect(() => {
     void router.start()
   }
   if (me()?.contextRequired) queueMicrotask(() => void chooseContext(true))
+})
+
+// The apps menu follows the permissions (they can depend on the location).
+effect(() => {
+  if (isActive() && me()?.permissions) loadRuntimeApps().catch((e) => toast.error(errorText(e)))
 })
 
 refreshMe().catch((e) => toast.error(errorText(e)))

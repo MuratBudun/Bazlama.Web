@@ -154,9 +154,9 @@ tests/                          xUnit, Testcontainers (MSSQL, PostgreSQL), SQLit
 
 ## Fazlar
 
-0. **İskelet:** solution, host, üç provider, Testcontainers ile CI, web projesinin `@bazlama/*` paketlerine bağlanması, shell.
-1. **Kullanıcı ve giriş:** kullanıcılar, login, parola politikası, kilitleme, TOTP MFA + recovery code, oturumlar, gruplar ve izinler, firma/lokasyon/plant/dönem ve oturum bağlamı, temel audit. Management'ta bu ekranlar.
-2. **Veri motoru + Runtime:** metadata modeli, metadata → tablo, şema farkı, kapsam filtreli CRUD API, liste ve form ekranlarının metadata'dan çizilmesi.
+0. ✅ **İskelet:** solution, host, üç provider, Testcontainers ile CI, web projesinin `@bazlama/*` paketlerine bağlanması, shell.
+1. ✅ **Kullanıcı ve giriş:** kullanıcılar, login, parola politikası, kilitleme, TOTP MFA + recovery code, oturumlar, gruplar ve izinler, firma/lokasyon/plant/dönem ve oturum bağlamı, temel audit. Management'ta bu ekranlar.
+2. ✅ **Veri motoru + Runtime:** metadata modeli, metadata → tablo, şema farkı, kapsam filtreli CRUD API, liste ve form ekranlarının metadata'dan çizilmesi. App'ler şimdilik JSON tanımla Management › Uygulamalar'dan kurulur (örnek: `samples/apps/siparis.json`). Açık kalanlar: "yetkili olduğum tüm lokasyonlar" liste görünümü; plant seçilmediğinde plant'a bağlı kayıtlarda kullanıcının plant yetkisine göre süzme; SQLite'ta Türkçe büyük/küçük harf duyarsız arama (yalnız ASCII).
 3. **Kod:** SDK, Roslyn derleme, ALC ile yükleme/boşaltma, code library, Monaco editörü (renklendirme → tanılama → tamamlama).
 4. **Development + paketleme:** entity/liste/form tasarımcıları, taslak/publish, `.bzapp` export/import, ortam modları. Sonunda yukarıdaki senaryo uçtan uca çalışır.
 

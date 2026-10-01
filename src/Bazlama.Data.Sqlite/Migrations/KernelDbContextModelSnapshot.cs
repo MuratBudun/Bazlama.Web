@@ -17,6 +17,82 @@ namespace Bazlama.Data.Sqlite.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
+            modelBuilder.Entity("Bazlama.Kernel.Apps.AppVersionHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("AppId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Changes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("InstalledAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("InstalledBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppId");
+
+                    b.ToTable("sys_app_versions", (string)null);
+                });
+
+            modelBuilder.Entity("Bazlama.Kernel.Apps.InstalledApp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("InstalledAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("sys_apps", (string)null);
+                });
+
             modelBuilder.Entity("Bazlama.Kernel.Auditing.AuditEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -530,6 +606,15 @@ namespace Bazlama.Data.Sqlite.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("sys_data_protection_keys", (string)null);
+                });
+
+            modelBuilder.Entity("Bazlama.Kernel.Apps.AppVersionHistory", b =>
+                {
+                    b.HasOne("Bazlama.Kernel.Apps.InstalledApp", null)
+                        .WithMany()
+                        .HasForeignKey("AppId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Bazlama.Kernel.Identity.GroupMember", b =>

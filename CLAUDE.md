@@ -52,9 +52,23 @@ npm run build        # outputs to src/Bazlama.Host/wwwroot (gitignored), served 
   - The guards stop admins from locking themselves out: no self-deactivation, no leaving Administrators, and the `*` permission stays on the system group.
   - The web pages are in `web/src/management/`. They share helpers in `ui.ts` (`formDialog`, `loader`, bound fields).
 - **Audit.** `AuditInterceptor` writes an `AuditEvent` for every change to an `IAudited` entity in the same `SaveChanges`. It masks secrets. Security events (logins, lockouts, MFA) are written explicitly by `AuthService`.
-- **App data (planned, Faz 2).** App tables will be generated from metadata as real tables (`app_<appKey>_<entity>`), not mapped through EF.
-  - The data engine enforces company / location / plant / period scoping, so app code cannot forget it.
+- **App data engine** (`src/Bazlama.Engine`).
+  - **Metadata.** An app is JSON metadata (`Metadata/AppDefinition.cs`; example: `samples/apps/siparis.json`), checked by `MetadataValidator`.
+  - **Schema.** `SchemaBuilder` turns each entity into a real table, `app_<app>_<entity>`. It adds the system columns (id, the scope columns, parent_id, audit columns, is_deleted, row_version), foreign keys and indexes.
+    - App fields are always NULL in the database; "required" is enforced by the engine.
+    - Detail entities inherit their master's scope and period binding.
+  - **Upgrades.** `SchemaDiff` plans an upgrade. Dropping columns or tables is destructive and needs a confirmation. Type, scope and parent changes are refused.
+  - **Installing.** `AppInstaller` runs the plan in one transaction and stores the definition in `sys_apps` and `sys_app_versions`.
+  - **SQL dialects.** `Sql/SqlDialect.cs` is the base; each provider assembly implements it (`SqlServerDialect`, `PostgreSqlDialect`, `SqliteDialect`).
+    - SQLite stores Guids and dates like EF Core does (upper-case and ISO text), so app tables can reference kernel tables.
+    - SQLite rebuilds a table when a column is dropped.
+  - **Data service.** `DataService` does all record access. Every query gets the scope filter from `IRequestContext` (company, location, plant, period). Writes are blocked in closed periods, deletes are soft, `row_version` catches concurrent updates, and every change goes to the audit log.
+  - **Permissions.** Each master entity gets `app.<app>.<entity>.read` and `.write`; its details use the master's permissions. `PermissionCatalog` adds them to the kernel permissions.
+  - **APIs.** `/api/management/apps` installs apps (Management module). `/api/runtime/data/{app}/{entity}` serves records (`src/Bazlama.Modules.Runtime`).
   - Ids are Guid v7 and times are UTC.
+- **Web runtime** (`web/src/runtime/`). Lists, forms and detail grids are drawn from the metadata. Field editors and grid formatting are in `fields.ts`.
+  - The core template treats every function value as a reactive binding. To pass a function to a property (for example `.pick`), wrap it: `.pick=${() => () => pick()}`.
+  - `loading()` builds page bodies untracked. Keep it that way, or typing into a form rebuilds the page.
 - **App code (planned, Faz 3).** App code is server-side C#. Roslyn compiles it to one DLL per app version, and each version loads into its own collectible `AssemblyLoadContext`.
 - **Web UI (`web/`).** Built on the user's own zero-dependency web component library (`bz-*` elements, signals, the `html` template, and `@bazlama/router` with `definePage` and hash routing).
   - The `@bazlama/*` packages are consumed **from source in the sibling repo** `../Bazlama.Web.Component/next/packages`, through aliases in `web/vite.config.ts` and `web/tsconfig.json`. Both repos must sit in the same parent folder.
