@@ -150,7 +150,7 @@ export const groupPage = definePage({
           <span class="spacer"></span>
           ${g.isSystem ? null : html`<bz-button variant="danger" @click=${remove}>${icon("trash")} Sil</bz-button>`}
         </div>
-        <bz-tabs .value=${tab} @change=${(e: CustomEvent<{ value: string }>) => tab.set(e.detail.value)}>
+        <bz-tabs .value=${tab} @change.self=${(e: CustomEvent<{ value: string }>) => tab.set(e.detail.value)}>
           <bz-tab-list label="Grup">
             <bz-tab value="general">Genel</bz-tab>
             <bz-tab value="permissions">İzinler</bz-tab>

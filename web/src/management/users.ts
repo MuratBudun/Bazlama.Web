@@ -195,7 +195,7 @@ export const userPage = definePage({
             : null}
           <bz-button @click=${resetPassword}>${icon("refresh")} Parola sıfırla</bz-button>
         </div>
-        <bz-tabs .value=${tab} @change=${(e: CustomEvent<{ value: string }>) => tab.set(e.detail.value)}>
+        <bz-tabs .value=${tab} @change.self=${(e: CustomEvent<{ value: string }>) => tab.set(e.detail.value)}>
           <bz-tab-list label="Kullanıcı">
             <bz-tab value="general">Genel</bz-tab>
             <bz-tab value="groups">Gruplar (${d.groups.length})</bz-tab>

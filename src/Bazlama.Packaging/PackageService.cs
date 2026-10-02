@@ -29,7 +29,8 @@ public sealed class PackageService(
     IRequestContext request,
     TimeProvider time)
 {
-    static readonly string SdkVersion = typeof(Sdk.Record).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+    /// <summary>The SDK app code is compiled against (packages carry it).</summary>
+    public static readonly string SdkVersion = typeof(Sdk.Record).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
 
     // ── Export ─────────────────────────────────────────────────────────────
 

@@ -37,25 +37,6 @@ const scopeText: Record<EntityDef["scope"], string> = {
   plant: "Plant",
 }
 
-export const runtimeHome = definePage({
-  title: "Uygulamalar",
-  setup: (ctx) => html`<div class="page">
-    <div class="page-head">${icon("layers", { size: 22 })}<h1>Uygulamalar</h1></div>
-    ${() =>
-      runtimeApps().length === 0
-        ? html`<p class="muted">Kullanabileceğiniz bir uygulama yok. Uygulamalar Yönetim › Uygulamalar'dan kurulur; erişim grup izinleriyle verilir.</p>`
-        : html`<div class="cards">
-            ${runtimeApps().map(
-              (a) => html`<a class="card-link" href=${ctx.router.href(`${runtimeConfig.base}/${a.key}`)}>
-                ${icon(a.icon ?? "layers", { size: 22 })}<strong>${a.name}</strong>
-                <span class="muted small">${a.description ?? ""}</span>
-                <span class="muted small">${a.entities.map((e) => e.plural).join(" · ")}</span>
-              </a>`,
-            )}
-          </div>`}
-  </div>`,
-})
-
 /** Loads the app definition and runs `body` with it (or shows the error). */
 function withApp(ctx: PageContext, body: (app: RuntimeApp) => unknown) {
   const app = signal<RuntimeApp | null>(null)

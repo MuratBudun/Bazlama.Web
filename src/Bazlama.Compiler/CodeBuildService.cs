@@ -182,6 +182,10 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
         }
     }
 
+    /// <summary>An app's code against library images, without a database (packing an app from source files).</summary>
+    public static CompileOutput CompileApp(AppDefinition app, IReadOnlyList<SourceFile> files, IEnumerable<byte[]> libraryImages) =>
+        AppCompiler.Compile(AppAssemblyName(app.Key), Sources(app, files), [.. libraryImages.Select(i => (MetadataReference)MetadataReference.CreateFromImage(i))]);
+
     static IEnumerable<SourceFile> Sources(AppDefinition app, IEnumerable<SourceFile> files) =>
         [new SourceFile(EntityCodeGenerator.FileName, EntityCodeGenerator.Generate(app)), .. files];
 

@@ -193,7 +193,6 @@ export const libraryPage = definePage({
       }
       return html`
         <div class="page-head">
-          <bz-button variant="ghost" size="sm" class="menu-toggle" data-shell-toggle="start" aria-label="Menüyü gizle / göster" data-tooltip="Menüyü gizle / göster">${icon("chevrons-left")}</bz-button>
           <bz-button variant="ghost" size="sm" aria-label="Geliştirmeye dön" @click=${() => void ctx.navigate("/development")}>${icon("arrow-left")}</bz-button>
           <h1>${l.name}</h1><span class="muted small">${() => `${l.key}${versions().length ? ` · ${versions().map((v) => v.version).join(", ")}` : " · yayınlanmadı"}`}</span>
           <span class="spacer"></span>

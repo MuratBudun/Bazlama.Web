@@ -8,6 +8,8 @@ import { forgetRuntimeApps } from "../runtime/api"
 import { className, codeFiles, codeTree, pascal, validPath, type CheckResult, type CodeDiagnostic, type CompletionEntry, type SourceFile } from "./code"
 import "./components/app-settings"
 import "./components/code-editor"
+import { dualView } from "./components/dual-view"
+import "./components/json-editor"
 import "./components/entity-editor"
 import "./components/form-designer"
 import "./components/list-designer"
@@ -16,6 +18,7 @@ import type { Problem, WorkbenchElement, WorkbenchModel, WorkbenchTab } from "./
 import "./components/workbench"
 import { discardDraft, draftStore, publishDraft } from "./draft"
 import { newEntity, newForm, newList, removeEntity, removeForm, removeList } from "./meta"
+import { parts, type DraftPart } from "./schema"
 
 /*
  * An app in development: one workbench. The explorer shows the app, its entities (details
@@ -286,6 +289,7 @@ export const appPage = definePage({
         }
         return [
           { id: "app", label: d.name || key, icon: "settings" },
+          { id: "definition", label: "app.json", icon: "file-text" },
           { id: "entities", label: "Entity'ler", icon: "folder", children: d.entities.filter((e) => !e.parent).map(entityItem) },
           { id: "menu", label: "Menü", icon: "menu", badge: menuErrors() || undefined },
           {
@@ -311,6 +315,7 @@ export const appPage = definePage({
         ]
       })
 
+      const json = (part: DraftPart) => html`<bazlama-json-editor .store=${store} .part=${part}></bazlama-json-editor>`
       const entityTab = (k: string): WorkbenchTab => {
         const e = () => store.def()?.entities.find((x) => x.key === k)
         return {
@@ -318,7 +323,12 @@ export const appPage = definePage({
           icon: e()?.parent ? "list" : "database",
           detail: `Entity: ${k}`,
           dirty: () => store.partDirty((d) => d.entities.find((x) => x.key === k) ?? null),
-          content: () => html`<bazlama-entity-editor .store=${store} entity=${k} .openCode=${() => openCode} .openForm=${() => openForm}></bazlama-entity-editor>`,
+          content: () =>
+            dualView(
+              `entity:${key}:${k}`,
+              () => html`<bazlama-entity-editor .store=${store} entity=${k} .openCode=${() => openCode} .openForm=${() => openForm}></bazlama-entity-editor>`,
+              () => json(parts.entity(k)),
+            ),
         }
       }
       const listTab = (k: string): WorkbenchTab => ({
@@ -326,14 +336,24 @@ export const appPage = definePage({
         icon: "table",
         detail: `Liste: ${k}`,
         dirty: () => store.partDirty((d) => d.lists?.find((x) => x.key === k) ?? null),
-        content: () => html`<bazlama-list-designer .store=${store} list=${k} .openEntity=${() => (e: string) => open(`entity:${e}`)}></bazlama-list-designer>`,
+        content: () =>
+          dualView(
+            `list:${key}:${k}`,
+            () => html`<bazlama-list-designer .store=${store} list=${k} .openEntity=${() => (e: string) => open(`entity:${e}`)}></bazlama-list-designer>`,
+            () => json(parts.list(k)),
+          ),
       })
       const formTab = (k: string): WorkbenchTab => ({
         title: () => store.def()?.forms?.find((x) => x.key === k)?.name || k,
         icon: "dashboard",
         detail: `Form: ${k}`,
         dirty: () => store.partDirty((d) => d.forms?.find((x) => x.key === k) ?? null),
-        content: () => html`<bazlama-form-designer .store=${store} form=${k} .openEntity=${() => (e: string) => open(`entity:${e}`)}></bazlama-form-designer>`,
+        content: () =>
+          dualView(
+            `form:${key}:${k}`,
+            () => html`<bazlama-form-designer .store=${store} form=${k} .openEntity=${() => (e: string) => open(`entity:${e}`)}></bazlama-form-designer>`,
+            () => json(parts.form(k)),
+          ),
       })
       const fileTab = (path: string): WorkbenchTab => ({
         title: () => path.split("/").pop()!,
@@ -356,7 +376,12 @@ export const appPage = definePage({
               icon: "settings",
               detail: "Uygulama",
               dirty: () => store.partDirty((d) => ({ name: d.name, icon: d.icon, description: d.description, entities: d.entities.map((e) => e.key), forms: (d.forms ?? []).map((f) => f.key), lists: (d.lists ?? []).map((l) => l.key) })),
-              content: () => html`<bazlama-app-settings .store=${store} .openEntity=${() => (k: string) => open(`entity:${k}`)} .addEntity=${() => () => void addEntity()}></bazlama-app-settings>`,
+              content: () =>
+                dualView(
+                  `app:${key}`,
+                  () => html`<bazlama-app-settings .store=${store} .openEntity=${() => (k: string) => open(`entity:${k}`)} .addEntity=${() => () => void addEntity()}></bazlama-app-settings>`,
+                  () => json(parts.app()),
+                ),
             }
           if (id.startsWith("entity:")) return entityTab(id.slice(7))
           if (id.startsWith("form:")) return formTab(id.slice(5))
@@ -367,7 +392,15 @@ export const appPage = definePage({
               icon: "menu",
               detail: "Uygulamanın Runtime menüsü",
               dirty: () => store.partDirty((d) => d.menu ?? []),
-              content: () => html`<bazlama-menu-designer .store=${store}></bazlama-menu-designer>`,
+              content: () => dualView(`menu:${key}`, () => html`<bazlama-menu-designer .store=${store}></bazlama-menu-designer>`, () => json(parts.menu())),
+            }
+          if (id === "definition")
+            return {
+              title: () => "app.json",
+              icon: "file-text",
+              detail: "Uygulama tanımının tamamı (JSON)",
+              dirty: () => store.dirty(),
+              content: () => html`<div class="dual-view" data-mode="code"><div class="dual-code">${json(parts.definition())}</div></div>`,
             }
           if (id.startsWith("file:")) return fileTab(id.slice(5))
           return null
@@ -392,7 +425,7 @@ export const appPage = definePage({
             )
           } else if (id === "forms") items.push({ value: "new-form", label: "Yeni form", icon: "plus" })
           else if (id === "lists") items.push({ value: "new-list", label: "Yeni liste", icon: "plus" })
-          else if (id === "menu") items.push({ value: "open", label: "Aç", icon: "external-link" })
+          else if (id === "menu" || id === "definition") items.push({ value: "open", label: "Aç", icon: "external-link" })
           else if (id.startsWith("list:")) {
             items.push(
               { value: "open", label: "Aç", icon: "external-link" },
@@ -481,7 +514,6 @@ export const appPage = definePage({
       }
       return html`
         <div class="page-head">
-          <bz-button variant="ghost" size="sm" class="menu-toggle" data-shell-toggle="start" aria-label="Menüyü gizle / göster" data-tooltip="Menüyü gizle / göster">${icon("chevrons-left")}</bz-button>
           <bz-button variant="ghost" size="sm" aria-label="Geliştirmeye dön" @click=${() => void ctx.navigate("/development")}>${icon("arrow-left")}</bz-button>
           <h1>${() => store.def()?.name ?? key}</h1>
           <span class="muted small">${() => (info()?.installedVersion ? `yayında: v${info()!.installedVersion}` : "yayınlanmadı")}</span>

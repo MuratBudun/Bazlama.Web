@@ -1,6 +1,7 @@
-import { html } from "@bazlama/core"
-import { icon, type TreeItem } from "@bazlama/headless"
-import { definePage, type RouteRecord, type Router } from "@bazlama/router"
+import { html, signal } from "@bazlama/core"
+import { api, type SystemInfo } from "../api"
+import { icon } from "@bazlama/headless"
+import { definePage, type RouteRecord } from "@bazlama/router"
 import { can } from "../session"
 import { appDetailPage, appsPage } from "./apps"
 import { groupPage, groupsPage } from "./groups"
@@ -21,10 +22,30 @@ export const SECTIONS = [
 
 export const canManage = () => SECTIONS.some((s) => can(s.permission))
 
+/** What this installation is (version, environment mode, database). */
+function installation() {
+  const info = signal<SystemInfo | null>(null)
+  const error = signal("")
+  api.get<SystemInfo>("/system/info").then(info.set, (e: Error) => error.set(e.message))
+  return html`<bz-panel heading="Kurulum">
+    ${() => {
+      if (error()) return html`<bz-alert variant="danger" heading="Sunucuya ulaşılamadı">${error()}</bz-alert>`
+      const i = info()
+      if (!i) return html`<span class="muted">Yükleniyor…</span>`
+      return html`<dl class="facts">
+        <dt>Sürüm</dt><dd>${i.version}</dd>
+        <dt>Ortam</dt><dd>${i.environment}</dd>
+        <dt>Veritabanı</dt><dd>${i.databaseProvider}</dd>
+      </dl>`
+    }}
+  </bz-panel>`
+}
+
 const homePage = definePage({
   title: "Yönetim",
   setup: (ctx) => html`<div class="page">
     <div class="page-head"><h1>Yönetim</h1></div>
+    ${installation()}
     <div class="cards">
       ${() => SECTIONS.filter((s) => can(s.permission)).map(
         (s) => html`<a class="card-link" href=${ctx.router.href(s.path)}>
@@ -48,11 +69,3 @@ export const managementRoutes: RouteRecord[] = [
   { path: "/management/apps", page: appsPage },
   { path: "/management/apps/:key", page: appDetailPage, remount: true },
 ]
-
-/** The menu node with the sections the user may open. */
-export const managementNav = (router: Router): TreeItem => ({
-  id: "/management",
-  label: "Yönetim",
-  icon: "settings",
-  children: SECTIONS.filter((s) => can(s.permission)).map((s) => ({ id: s.path, label: s.label, icon: s.icon, href: router.href(s.path) })),
-})

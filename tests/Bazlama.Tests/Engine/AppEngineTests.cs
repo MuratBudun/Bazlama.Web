@@ -68,7 +68,7 @@ public sealed class AppEngineTests : IAsyncLifetime
         Assert.Equal(("urun", "urun"), (menu[1].GetProperty("entity").GetString(), menu[1].GetProperty("list").GetString()));
 
         var plan = await (await admin.PostAsJsonAsync("/api/management/apps/plan", Samples.Node("siparis"), Ct)).JsonAsync();
-        Assert.Contains("Yeni versiyon kurulu versiyondan (1.0.0) büyük olmalı.", plan.GetProperty("errors").EnumerateArray().Select(e => e.GetString()));
+        Assert.Contains("Yeni versiyon kurulu versiyondan (2.0.0) büyük olmalı.", plan.GetProperty("errors").EnumerateArray().Select(e => e.GetString()));
 
         // App permissions are in the catalog for the groups screen.
         var permissions = await (await admin.GetAsync("/api/management/groups/permissions", Ct)).JsonAsync();
@@ -204,7 +204,7 @@ public sealed class AppEngineTests : IAsyncLifetime
     {
         var (_, _, order) = await SeedAsync();
         var v2 = Samples.Node("siparis");
-        v2["version"] = "1.1.0";
+        v2["version"] = "2.1.0";
         var siparis = v2["entities"]!.AsArray()[2]!.AsObject();
         var fields = siparis["fields"]!.AsArray();
         fields.RemoveAt(5); // aciklama

@@ -1,8 +1,8 @@
 {
   "key": "siparis",
   "name": "Sipariş Takibi",
-  "version": "1.0.0",
-  "description": "Örnek app: müşteriler, ürünler, siparişler ve sipariş kalemleri.",
+  "version": "2.0.0",
+  "description": "Örnek app: müşteriler, ürünler, siparişler ve kalemleri; tutarlar, numaralar ve onay akışı C# koduyla.",
   "icon": "cart",
   "entities": [
     {
@@ -14,7 +14,7 @@
       "titleField": "unvan",
       "fields": [
         { "key": "unvan", "label": "Unvan", "type": "text", "required": true },
-        { "key": "vergi_no", "label": "Vergi no", "type": "text", "maxLength": 20 },
+        { "key": "vergi_no", "label": "Vergi no", "type": "text", "maxLength": 20, "hint": "10 haneli vergi no ya da 11 haneli TC kimlik no; kod denetler." },
         { "key": "sehir", "label": "Şehir", "type": "text", "maxLength": 50 },
         {
           "key": "segment", "label": "Segment", "type": "choice",
@@ -58,7 +58,7 @@
       "periodBound": true,
       "titleField": "siparis_no",
       "fields": [
-        { "key": "siparis_no", "label": "Sipariş no", "type": "text", "maxLength": 30, "required": true },
+        { "key": "siparis_no", "label": "Sipariş no", "type": "text", "maxLength": 30, "required": true, "hint": "Boş bırakılırsa S-<yıl>-<sıra> olarak verilir." },
         { "key": "musteri", "label": "Müşteri", "type": "reference", "reference": "musteri", "required": true },
         { "key": "tarih", "label": "Sipariş tarihi", "type": "date", "required": true },
         { "key": "teslim", "label": "Teslim zamanı", "type": "dateTime" },
@@ -71,7 +71,8 @@
             { "value": "iptal", "label": "İptal" }
           ]
         },
-        { "key": "aciklama", "label": "Açıklama", "type": "longText" }
+        { "key": "aciklama", "label": "Açıklama", "type": "longText" },
+        { "key": "toplam", "label": "Toplam tutar", "type": "decimal", "precision": 18, "scale": 2, "hint": "Kalemlerden hesaplanır (kaydedince ve onaylanınca)." }
       ]
     },
     {
@@ -84,6 +85,7 @@
         { "key": "miktar", "label": "Miktar", "type": "decimal", "precision": 18, "scale": 3, "required": true },
         { "key": "birim_fiyat", "label": "Birim fiyat", "type": "decimal", "precision": 18, "scale": 2 },
         { "key": "iskonto", "label": "İskonto (%)", "type": "integer" },
+        { "key": "tutar", "label": "Tutar", "type": "decimal", "precision": 18, "scale": 2, "hint": "Miktar × birim fiyat − iskonto; hesaplanır." },
         { "key": "not", "label": "Not", "type": "text" }
       ]
     }
@@ -103,7 +105,7 @@
       "name": "Sipariş",
       "entity": "siparis",
       "sections": [
-        { "title": "Sipariş", "fields": ["siparis_no", "musteri", "tarih", "teslim", "durum"] },
+        { "title": "Sipariş", "fields": ["siparis_no", "musteri", "tarih", "teslim", "durum", "toplam"] },
         { "title": "Açıklama", "fields": ["aciklama"], "columns": 1 }
       ]
     }
@@ -111,9 +113,9 @@
   "lists": [
     { "key": "musteri", "name": "Müşteriler", "entity": "musteri", "columns": ["unvan", "vergi_no", "sehir", "segment", "aktif"], "sortField": "unvan", "form": "musteri" },
     { "key": "urun", "name": "Ürünler", "entity": "urun", "columns": ["kod", "ad", "birim", "fiyat"], "sortField": "kod" },
-    { "key": "siparis", "name": "Siparişler", "entity": "siparis", "columns": ["siparis_no", "musteri", "tarih", "durum", "teslim"], "sortField": "tarih", "sortDescending": true, "form": "siparis" },
+    { "key": "siparis", "name": "Siparişler", "entity": "siparis", "columns": ["siparis_no", "musteri", "tarih", "durum", "toplam", "teslim"], "sortField": "tarih", "sortDescending": true, "form": "siparis" },
     { "key": "son_siparisler", "name": "Son siparişler", "entity": "siparis", "columns": ["siparis_no", "musteri", "tarih", "durum"], "sortField": "tarih", "sortDescending": true, "form": "siparis" },
-    { "key": "kalem", "name": "Kalemler", "entity": "kalem", "columns": ["urun", "miktar", "birim_fiyat", "iskonto", "not"] }
+    { "key": "kalem", "name": "Kalemler", "entity": "kalem", "columns": ["urun", "miktar", "birim_fiyat", "iskonto", "tutar", "not"] }
   ],
   "menu": [
     {

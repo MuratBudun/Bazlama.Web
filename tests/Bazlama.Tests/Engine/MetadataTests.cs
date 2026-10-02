@@ -6,13 +6,16 @@ namespace Bazlama.Tests.Engine;
 
 public static class Samples
 {
-    /// <summary>samples/apps/&lt;name&gt;.json from the repository.</summary>
-    public static string Json(string name)
+    /// <summary>samples/apps/&lt;name&gt; in the repository: the app's definition, code and libraries.</summary>
+    public static string Folder(string name)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Bazlama.slnx"))) dir = dir.Parent;
-        return File.ReadAllText(Path.Combine(dir!.FullName, "samples", "apps", $"{name}.json"));
+        return Path.Combine(dir!.FullName, "samples", "apps", name);
     }
+
+    /// <summary>samples/apps/&lt;name&gt;/app.json.</summary>
+    public static string Json(string name) => File.ReadAllText(Path.Combine(Folder(name), "app.json"));
 
     public static JsonObject Node(string name) => JsonNode.Parse(Json(name))!.AsObject();
 
@@ -190,7 +193,7 @@ public sealed class MetadataTests
     {
         var v1 = Samples.App("siparis");
         var node = Samples.Node("siparis");
-        node["version"] = "1.1.0";
+        node["version"] = "2.1.0";
         var siparis = node["entities"]!.AsArray()[2]!.AsObject();
         var fields = siparis["fields"]!.AsArray();
         fields.RemoveAt(5); // aciklama

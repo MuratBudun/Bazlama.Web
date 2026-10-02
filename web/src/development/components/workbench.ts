@@ -208,8 +208,8 @@ export const Workbench = define("bazlama-workbench", {
           <div class="wb-editors">
             ${() => (open().length ? null : html`<div class="wb-empty muted">Gezginden bir entity ya da dosya açın.</div>`)}
             <bz-tabs fill ?hidden=${() => open().length === 0} .value=${current} ref=${(t: HTMLElement) => (tabsEl = t)}
-              @change=${(e: CustomEvent<{ value: string }>) => current.set(e.detail.value)}
-              @close=${(e: CustomEvent<{ value: string }>) => closeTab(e.detail.value)}>
+              @change.self=${(e: CustomEvent<{ value: string }>) => current.set(e.detail.value)}
+              @close.self=${(e: CustomEvent<{ value: string }>) => closeTab(e.detail.value)}>
               <bz-tab-list>${() => repeat(open, (id) => id, tabLabel)}</bz-tab-list>
               ${() => repeat(open, (id) => id, tabPanel)}
             </bz-tabs>

@@ -80,7 +80,7 @@ public abstract class AppEngineProviderTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
 
         var v2 = Samples.Node("siparis");
-        v2["version"] = "1.1.0";
+        v2["version"] = "2.1.0";
         var siparis = v2["entities"]!.AsArray()[2]!.AsObject();
         siparis["fields"]!.AsArray().RemoveAt(5);
         siparis["fields"]!.AsArray().Add(new JsonObject { ["key"] = "oncelik", ["label"] = "Öncelik", ["type"] = "integer" });

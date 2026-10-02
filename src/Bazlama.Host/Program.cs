@@ -28,6 +28,9 @@ var app = builder.Build();
 if (database.MigrateOnStartup)
     await app.MigrateKernelDatabaseAsync();
 
+if (AdminCommands.IsCommand(args))
+    return await AdminCommands.RunAsync(app, args);
+
 app.UseIdentityModule();
 app.MapAuthEndpoints();
 app.MapManagementEndpoints();
@@ -44,7 +47,8 @@ app.UseStaticFiles();
 app.MapFallback("/api/{**path}", () => Results.NotFound());
 app.MapFallbackToFile("index.html");
 
-app.Run();
+await app.RunAsync();
+return 0;
 
 record SystemInfo(string Product, string Version, string Environment, string DatabaseProvider);
 

@@ -119,7 +119,7 @@ export const forgetRuntimeApps = () => cache.clear()
  * preview tab) a draft's preview, whose records live in tables of its own.
  */
 export const runtimeConfig: { base: string; load: (key: string) => Promise<RuntimeApp> } = {
-  base: "/runtime",
+  base: "/apps",
   load: (key) => runtimeApp(key),
 }
 
