@@ -42,6 +42,7 @@ public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbCont
     public DbSet<CodeLibrary> CodeLibraries => Set<CodeLibrary>();
     public DbSet<CodeLibraryFile> CodeLibraryFiles => Set<CodeLibraryFile>();
     public DbSet<CodeLibraryVersion> CodeLibraryVersions => Set<CodeLibraryVersion>();
+    public DbSet<AppDraft> AppDrafts => Set<AppDraft>();
 
     /// <summary>Data Protection keys (TOTP secrets, cookies): in the database, so every node and restart shares them.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -229,6 +230,13 @@ public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbCont
             e.Property(x => x.Hash).HasMaxLength(64);
             e.HasOne<CodeLibrary>().WithMany().HasForeignKey(x => x.LibraryId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => new { x.LibraryId, x.Version }).IsUnique();
+        });
+
+        model.Entity<AppDraft>(e =>
+        {
+            e.ToTable("sys_app_drafts");
+            e.Property(x => x.AppKey).HasMaxLength(Code);
+            e.HasIndex(x => x.AppKey).IsUnique();
         });
 
         model.Entity<DataProtectionKey>().ToTable("sys_data_protection_keys");

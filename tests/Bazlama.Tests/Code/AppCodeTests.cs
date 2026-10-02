@@ -234,9 +234,12 @@ public sealed class AppCodeTests : IAsyncLifetime
         await test.SetupAsync();
         var client = test.Client();
         await client.LoginAsync(AdminUser, AdminPassword);
-        await client.PostAsJsonAsync("/api/management/apps/install", new { definition = Samples.Node("siparis"), confirmDestructive = false }, Ct);
+        // Apps change only by package here: a bare definition is refused, and so is code editing.
+        var install = await client.PostAsJsonAsync("/api/management/apps/install", new { definition = Samples.Node("siparis"), confirmDestructive = false }, Ct);
+        Assert.Equal(HttpStatusCode.BadRequest, install.StatusCode);
+        Assert.Contains("yalnız paketle", (await install.JsonAsync()).Errors().Single());
         var res = await client.PutAsJsonAsync($"{Dev}/files", new { path = "A.cs", content = "public class A {}" }, Ct);
         Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Dev}/workspace", Ct)).StatusCode); // reading is fine
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/development/apps", Ct)).StatusCode); // reading is fine
     }
 }

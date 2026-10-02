@@ -66,3 +66,13 @@ public class CodeLibraryVersion : Entity
     public DateTime CreatedAt { get; set; }
     public Guid? CreatedBy { get; set; }
 }
+
+/// <summary>The app definition being designed (Development). Publishing installs it as a new version.</summary>
+public class AppDraft : Entity
+{
+    public required string AppKey { get; set; }
+    /// <summary>The app definition (JSON), possibly not valid yet.</summary>
+    public required string Definition { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+}

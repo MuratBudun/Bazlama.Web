@@ -7,6 +7,7 @@ using Bazlama.Modules.Development;
 using Bazlama.Modules.Identity;
 using Bazlama.Modules.Management;
 using Bazlama.Modules.Runtime;
+using Bazlama.Packaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,7 @@ version = version.Split('+')[0];
 builder.Services.AddSingleton(new PlatformInfo(mode, version));
 builder.Services.AddKernelDatabase(database);
 builder.Services.AddCompilerModule();
+builder.Services.AddScoped<PackageService>();
 builder.Services.AddIdentityModule(builder.Configuration["Platform:CookieName"] ?? "bazlama.session");
 
 var app = builder.Build();

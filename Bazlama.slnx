@@ -5,6 +5,7 @@
     <Project Path="src/Bazlama.Engine/Bazlama.Engine.csproj" />
     <Project Path="src/Bazlama.Sdk/Bazlama.Sdk.csproj" />
     <Project Path="src/Bazlama.Compiler/Bazlama.Compiler.csproj" />
+    <Project Path="src/Bazlama.Packaging/Bazlama.Packaging.csproj" />
     <Project Path="src/Bazlama.Data.SqlServer/Bazlama.Data.SqlServer.csproj" />
     <Project Path="src/Bazlama.Data.PostgreSql/Bazlama.Data.PostgreSql.csproj" />
     <Project Path="src/Bazlama.Data.Sqlite/Bazlama.Data.Sqlite.csproj" />

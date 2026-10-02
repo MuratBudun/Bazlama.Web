@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Bazlama.Engine;
 using Bazlama.Engine.Metadata;
+using Bazlama.Kernel;
+using Bazlama.Packaging;
 using Bazlama.Kernel.Data;
 using Bazlama.Kernel.Identity;
 using Bazlama.Modules.Identity;
@@ -42,16 +44,56 @@ static class AppEndpoints
             return Results.Ok(new { definition = JsonDocument.Parse(app.Metadata).RootElement, versions });
         });
 
-        apps.MapPost("/plan", async (JsonElement definition, AppInstaller installer, CancellationToken ct) =>
-            Read(definition, out var app, out var error) ? Results.Ok(await installer.PlanAsync(app!, ct)) : Errors(error!));
+        // Installing from a bare definition: a development installation only (others take packages).
+        apps.MapPost("/plan", async (JsonElement definition, AppInstaller installer, PlatformInfo platform, CancellationToken ct) =>
+            !platform.CanDevelop ? PackagesOnly(platform)
+            : Read(definition, out var app, out var error) ? Results.Ok(await installer.PlanAsync(app!, ct)) : Errors(error!));
 
-        apps.MapPost("/install", async (InstallRequest request, AppInstaller installer, CancellationToken ct) =>
+        apps.MapPost("/install", async (InstallRequest request, AppInstaller installer, PlatformInfo platform, CancellationToken ct) =>
         {
+            if (!platform.CanDevelop) return PackagesOnly(platform);
             if (!Read(request.Definition, out var app, out var error)) return Errors(error!);
             var result = await installer.InstallAsync(app!, request.ConfirmDestructive, ct);
             if (result.Installed) SessionStore.PermissionsChanged(); // new app permissions in the catalog
             return result.Installed ? Results.Ok(result) : Results.Json(result, statusCode: StatusCodes.Status400BadRequest);
         });
+
+        // ── .bzapp packages ──────────────────────────────────────────────
+
+        apps.MapGet("/{key}/export", async (string key, PackageService packages, CancellationToken ct) =>
+        {
+            var (bytes, name, error) = await packages.ExportAsync(key, ct);
+            return bytes is null ? Errors(error!) : Results.File(bytes, "application/zip", name);
+        });
+
+        apps.MapPost("/import/preview", async (HttpRequest http, PackageService packages, CancellationToken ct) =>
+            await Body(http, ct) is { } bytes ? Results.Ok(await packages.PreviewAsync(bytes, ct)) : Errors("Paket 20 MB'tan büyük olamaz."));
+
+        apps.MapPost("/import", async (HttpRequest http, bool? confirmDestructive, PackageService packages, CancellationToken ct) =>
+        {
+            if (await Body(http, ct) is not { } bytes) return Errors("Paket 20 MB'tan büyük olamaz.");
+            var result = await packages.ImportAsync(bytes, confirmDestructive ?? false, ct);
+            if (result.Imported) SessionStore.PermissionsChanged();
+            return result.Imported ? Results.Ok(result) : Results.Json(result, statusCode: StatusCodes.Status400BadRequest);
+        });
+    }
+
+    static IResult PackagesOnly(PlatformInfo platform) =>
+        Errors($"Bu kurulum bir {platform.Mode} ortamı: uygulamalar yalnız paketle (.bzapp) kurulur ve güncellenir.");
+
+    /// <summary>The raw request body (a .bzapp), at most 20 MB.</summary>
+    static async Task<byte[]?> Body(HttpRequest http, CancellationToken ct)
+    {
+        const int Max = 20 * 1024 * 1024;
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await http.Body.ReadAsync(chunk, ct)) > 0)
+        {
+            if (buffer.Length + read > Max) return null;
+            buffer.Write(chunk, 0, read);
+        }
+        return buffer.ToArray();
     }
 
     static bool Read(JsonElement json, out AppDefinition? app, out string? error)

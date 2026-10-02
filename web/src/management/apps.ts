@@ -1,7 +1,7 @@
 import { html, signal } from "@bazlama/core"
 import { dialogs, icon, toast, type GridColumn } from "@bazlama/headless"
 import { definePage } from "@bazlama/router"
-import { api, errorText } from "../api"
+import { api, ApiError, errorText, systemInfo } from "../api"
 import { forgetRuntimeApps, loadRuntimeApps } from "../runtime/api"
 import { refreshMe } from "../session"
 import { checkField, dataGrid, dateTime, loader, loading } from "./ui"
@@ -22,6 +22,20 @@ interface InstallPlan {
   changes: { description: string; destructive: boolean }[]
   errors: string[]
   hasDestructive: boolean
+}
+interface ImportPreview {
+  manifest: { key: string; name: string; version: string; platformVersion: string; exportedAt: string; exportedBy: string | null; buildHash: string | null } | null
+  plan: InstallPlan | null
+  libraries: { key: string; version: string; status: "new" | "installed" | "conflict" }[]
+  code: { fileCount: number; success: boolean; diagnostics: { path: string; line: number; message: string; severity: string }[] } | null
+  errors: string[]
+  canImport: boolean
+}
+interface ImportResult {
+  imported: boolean
+  preview: ImportPreview
+  buildHash: string | null
+  hashMatches: boolean | null
 }
 interface AppDetail {
   definition: unknown
@@ -123,6 +137,96 @@ async function install(after: () => Promise<unknown>) {
   }
 }
 
+const LIBRARY_STATUS = { new: "kurulacak", installed: "kurulu (aynı)", conflict: "çakışıyor" }
+
+/** A .bzapp package: the file → what it would do (schema, libraries, code) → import. */
+async function importPackage(after: () => Promise<unknown>) {
+  const file = signal<File | null>(null)
+  const preview = signal<ImportPreview | null>(null)
+  const error = signal("")
+  const busy = signal(false)
+  const confirmDrop = signal(false)
+  let result = null as ImportResult | null
+
+  const readFile = async (e: Event) => {
+    const f = (e.currentTarget as HTMLInputElement).files?.[0] ?? null
+    file.set(f)
+    preview.set(null)
+    error.set("")
+    confirmDrop.set(false)
+    if (!f) return
+    busy.set(true)
+    try {
+      preview.set(await api.upload<ImportPreview>("/management/apps/import/preview", f))
+    } catch (e) {
+      error.set(errorText(e))
+    } finally {
+      busy.set(false)
+    }
+  }
+
+  const imported = await dialogs.open<boolean>({
+    heading: "Paket içe aktar (.bzapp)",
+    size: "lg",
+    content: () => html`<div class="stack">
+      <p class="muted">Geliştirme ortamında dışa aktarılan paketi seçin. Kurmadan önce veritabanı değişiklikleri, kütüphaneler ve kodun bu kurulumda derlenip derlenmediği gösterilir.</p>
+      <div class="row"><input type="file" accept=".bzapp" aria-label="Paket dosyası" @change=${readFile} /></div>
+      ${() => (error() ? html`<bz-alert variant="danger">${error()}</bz-alert>` : null)}
+      ${() => {
+        const p = preview()
+        if (!p) return null
+        const m = p.manifest
+        const plan = p.plan
+        const codeErrors = p.code?.diagnostics.filter((d) => d.severity === "error") ?? []
+        return html`<section class="stack plan">
+          ${m ? html`<h2>${m.name} <span class="muted small">${plan?.fromVersion ? `${plan.fromVersion} → ${m.version}` : `${m.version} (yeni kurulum)`}</span></h2>
+            <p class="muted small">Dışa aktaran: ${m.exportedBy ?? "?"} · ${dateTime(m.exportedAt)} · platform ${m.platformVersion}</p>` : null}
+          ${p.errors.length ? html`<bz-alert variant="danger" heading="Kurulamaz"><ul>${p.errors.map((e) => html`<li>${e}</li>`)}</ul></bz-alert>` : null}
+          ${plan?.errors.length ? html`<bz-alert variant="danger" heading="Kurulamaz"><ul>${plan.errors.map((e) => html`<li>${e}</li>`)}</ul></bz-alert>` : null}
+          ${plan && !plan.errors.length
+            ? html`<h3>Veritabanı</h3><ul class="changes">${plan.changes.map((c) => html`<li class=${c.destructive ? "destructive" : ""}>${c.destructive ? icon("alert", { size: 14 }) : icon("check", { size: 14 })} ${c.description}</li>`)}</ul>
+              ${plan.changes.length === 0 ? html`<p class="muted">Veritabanında değişiklik yok.</p>` : null}`
+            : null}
+          ${p.libraries.length ? html`<h3>Kod kütüphaneleri</h3><ul class="changes">${p.libraries.map((l) => html`<li class=${l.status === "conflict" ? "destructive" : ""}>${l.key} ${l.version} — ${LIBRARY_STATUS[l.status]}</li>`)}</ul>` : null}
+          ${p.code
+            ? p.code.success
+              ? html`<bz-alert variant="success">Kod (${p.code.fileCount} dosya) bu kurulumda derleniyor.</bz-alert>`
+              : html`<bz-alert variant="danger" heading="Kod derlenmiyor"><ul>${codeErrors.slice(0, 10).map((d) => html`<li>${d.path}:${d.line} — ${d.message}</li>`)}</ul></bz-alert>`
+            : null}
+          ${plan?.hasDestructive && p.canImport
+            ? html`<bz-alert variant="warning" heading="Veri kaybı">Kırmızı işaretli değişiklikler kolon veya tablo siler; içindeki veriler geri alınamaz.</bz-alert>
+                ${checkField("Veri kaybını anlıyorum, devam et", confirmDrop)}`
+            : null}
+        </section>`
+      }}
+    </div>`,
+    footer: (ref) => html`<bz-button @click=${() => void ref.close(false)}>Vazgeç</bz-button>
+      <bz-button variant="primary" ?loading=${busy} ?disabled=${() => !preview()?.canImport || (preview()!.plan!.hasDestructive && !confirmDrop())}
+        @click=${async () => {
+          busy.set(true)
+          try {
+            result = await api.upload<ImportResult>(`/management/apps/import?confirmDestructive=${confirmDrop()}`, file()!)
+            void ref.close(true)
+          } catch (e) {
+            if (e instanceof ApiError && (e.body as ImportResult | null)?.preview) preview.set((e.body as ImportResult).preview)
+            error.set(errorText(e))
+          } finally {
+            busy.set(false)
+          }
+        }}>İçe aktar</bz-button>`,
+  })
+  if (imported) {
+    if (result?.hashMatches === false) toast.warning("Kuruldu, ancak derlenen kodun özeti paketteki özetle aynı değil.")
+    else toast.success("Paket kuruldu. Kullanıcılara erişim için grup izinlerini verin.")
+    forgetRuntimeApps()
+    await Promise.all([after(), loadRuntimeApps(), refreshMe()])
+  }
+}
+
+/** Installing from a bare definition is for development installations; others take packages. */
+const devInstall = signal(false)
+void systemInfo().then((i) => devInstall.set(i.environment === "Development"), () => {})
+
 export const appsPage = definePage({
   title: "Uygulamalar",
   setup(ctx) {
@@ -130,9 +234,10 @@ export const appsPage = definePage({
     return html`<div class="page">
       <div class="page-head">
         <h1>Uygulamalar</h1><span class="spacer"></span>
-        <bz-button variant="primary" @click=${() => install(apps.reload)}>${icon("upload")} Kur / güncelle</bz-button>
+        ${() => (devInstall() ? html`<bz-button @click=${() => install(apps.reload)}>${icon("upload")} Tanımdan kur (JSON)</bz-button>` : null)}
+        <bz-button variant="primary" @click=${() => importPackage(apps.reload)}>${icon("upload")} Paket içe aktar</bz-button>
       </div>
-      <p class="muted">Kurulu uygulamalar. Bir uygulamanın yeni versiyonu aynı yerden yüklenir; tablolar tanıma göre güncellenir.</p>
+      <p class="muted">Kurulu uygulamalar. Yeni bir uygulama ya da yeni versiyonu .bzapp paketiyle kurulur; tablolar tanıma göre güncellenir.</p>
       ${loading(apps, () => dataGrid({
         label: "Uygulamalar",
         persist: "apps",
@@ -166,7 +271,8 @@ export const appDetailPage = definePage({
           <bz-button variant="ghost" size="sm" aria-label="Uygulamalara dön" @click=${() => void ctx.navigate("/management/apps")}>${icon("arrow-left")}</bz-button>
           <h1>${def.name}</h1><span class="muted small">v${def.version}</span><span class="spacer"></span>
           <bz-button @click=${download}>${icon("download")} Tanımı indir</bz-button>
-          <bz-button variant="primary" @click=${() => install(detail.reload)}>${icon("upload")} Yeni versiyon</bz-button>
+          <a class="button-link" href=${`/api/management/apps/${key}/export`} download>${icon("download")} Dışa aktar (.bzapp)</a>
+          <bz-button variant="primary" @click=${() => importPackage(detail.reload)}>${icon("upload")} Yeni versiyon (paket)</bz-button>
         </div>
         ${def.description ? html`<p class="muted">${def.description}</p>` : null}
         <h2>Versiyon geçmişi</h2>

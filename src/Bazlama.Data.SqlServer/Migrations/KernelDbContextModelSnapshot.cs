@@ -238,6 +238,35 @@ namespace Bazlama.Data.SqlServer.Migrations
                     b.ToTable("sys_app_code_files", (string)null);
                 });
 
+            modelBuilder.Entity("Bazlama.Kernel.Code.AppDraft", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AppKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppKey")
+                        .IsUnique();
+
+                    b.ToTable("sys_app_drafts", (string)null);
+                });
+
             modelBuilder.Entity("Bazlama.Kernel.Code.AppWorkspace", b =>
                 {
                     b.Property<Guid>("Id")

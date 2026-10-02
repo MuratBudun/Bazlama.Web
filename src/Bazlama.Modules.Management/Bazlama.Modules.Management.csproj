@@ -4,6 +4,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Bazlama.Modules.Identity\Bazlama.Modules.Identity.csproj" />
-    <ProjectReference Include="..\Bazlama.Engine\Bazlama.Engine.csproj" />
+    <ProjectReference Include="..\Bazlama.Packaging\Bazlama.Packaging.csproj" />
   </ItemGroup>
 </Project>

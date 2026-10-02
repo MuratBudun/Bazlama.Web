@@ -35,19 +35,46 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
         return json is null ? [] : JsonSerializer.Deserialize<List<LibraryRef>>(json, Json) ?? [];
     }
 
+    /// <summary>
+    /// The definition being worked on: the draft when there is one (and it parses), otherwise the
+    /// installed one. Code is checked and completed against it, so new fields can be used at once.
+    /// </summary>
+    public async Task<AppDefinition?> EditingDefinitionAsync(string appKey, CancellationToken ct)
+    {
+        var draft = await db.AppDrafts.AsNoTracking().Where(d => d.AppKey == appKey).Select(d => d.Definition).FirstOrDefaultAsync(ct);
+        if (draft is not null)
+        {
+            try
+            {
+                return AppDefinition.Parse(draft);
+            }
+            catch (JsonException)
+            {
+                // An unreadable draft: fall back to what is installed.
+            }
+        }
+        return await registry.GetAsync(appKey, ct);
+    }
+
     /// <summary>Diagnostics for (possibly unsaved) files, without storing anything.</summary>
     public async Task<CompileOutput> CheckAsync(string appKey, IReadOnlyList<SourceFile> files, CancellationToken ct)
     {
-        var app = await registry.GetAsync(appKey, ct) ?? throw new InvalidOperationException($"App bulunamadı: {appKey}");
-        var (refs, missing) = await LibraryReferencesAsync(await LibrariesOfAsync(appKey, ct), ct);
-        var output = AppCompiler.Compile(AppAssemblyName(appKey), Sources(app, files), refs, emit: false);
+        var app = await EditingDefinitionAsync(appKey, ct) ?? throw new InvalidOperationException($"App bulunamadı: {appKey}");
+        return await CheckAgainstAsync(app, files, await LibrariesOfAsync(appKey, ct), ct);
+    }
+
+    /// <summary>Does this code compile against this definition and these library versions? (Publish, import.)</summary>
+    public async Task<CompileOutput> CheckAgainstAsync(AppDefinition app, IReadOnlyList<SourceFile> files, IReadOnlyList<LibraryRef> libraries, CancellationToken ct, IReadOnlyList<byte[]>? extraLibraryImages = null)
+    {
+        var (refs, missing) = await LibraryReferencesAsync(libraries, ct, extraLibraryImages);
+        var output = AppCompiler.Compile(AppAssemblyName(app.Key), Sources(app, files), refs, emit: false);
         return missing.Count == 0 ? output : output with { Success = false, Diagnostics = [.. missing.Select(m => Problem(m)), .. output.Diagnostics] };
     }
 
     /// <summary>Completion at a position of (possibly unsaved) app files.</summary>
     public async Task<IReadOnlyList<CompletionEntry>> CompleteAsync(string appKey, IReadOnlyList<SourceFile> files, string path, int line, int column, CancellationToken ct)
     {
-        var app = await registry.GetAsync(appKey, ct) ?? throw new InvalidOperationException($"App bulunamadı: {appKey}");
+        var app = await EditingDefinitionAsync(appKey, ct) ?? throw new InvalidOperationException($"App bulunamadı: {appKey}");
         var (refs, _) = await LibraryReferencesAsync(await LibrariesOfAsync(appKey, ct), ct);
         return await CodeCompletion.CompleteAsync([.. Sources(app, files)], path, line, column, refs, ct);
     }
@@ -59,7 +86,7 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
     public async Task<BuildResult> BuildAsync(string appKey, CancellationToken ct)
     {
         var app = await registry.GetAsync(appKey, ct);
-        if (app is null) return new(false, null, null, [], [$"App bulunamadı: {appKey}"]);
+        if (app is null) return new(false, null, null, [], ["App henüz yayınlanmadı: önce tanımı yayınlayın."]);
         var files = await FilesAsync(appKey, ct);
         var libraries = await LibrariesOfAsync(appKey, ct);
         var (refs, missing) = await LibraryReferencesAsync(libraries, ct);
@@ -129,8 +156,10 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
 
     // ── Libraries ──────────────────────────────────────────────────────────
 
-    async Task<(List<MetadataReference> Refs, List<string> Missing)> LibraryReferencesAsync(IReadOnlyList<LibraryRef> libraries, CancellationToken ct)
+    /// <param name="extraImages">Library images not installed yet (an import being checked).</param>
+    async Task<(List<MetadataReference> Refs, List<string> Missing)> LibraryReferencesAsync(IReadOnlyList<LibraryRef> libraries, CancellationToken ct, IReadOnlyList<byte[]>? extraImages = null)
     {
+        if (extraImages is { Count: > 0 }) return ([.. extraImages.Select(i => (MetadataReference)MetadataReference.CreateFromImage(i))], []);
         var refs = new List<MetadataReference>();
         var missing = new List<string>();
         foreach (var l in libraries)
@@ -157,6 +186,18 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
 
     public CompileOutput CheckLibrary(string key, IReadOnlyList<SourceFile> files) =>
         AppCompiler.Compile(LibraryAssemblyName(key), files, emit: false);
+
+    /// <summary>A library version from its sources (deterministic: the same sources give the same image and hash).</summary>
+    public static CompileOutput CompileLibrary(string key, IReadOnlyList<SourceFile> files) =>
+        AppCompiler.Compile(LibraryAssemblyName(key), files);
+
+    /// <summary>The active build of an app: its compiled sources, libraries and hash (export).</summary>
+    public async Task<(IReadOnlyList<SourceFile> Files, IReadOnlyList<LibraryRef> Libraries, string Hash, string AppVersion)?> ActiveBuildAsync(string appKey, CancellationToken ct)
+    {
+        var b = await db.AppBuilds.AsNoTracking().FirstOrDefaultAsync(x => x.AppKey == appKey && x.IsActive, ct);
+        if (b is null) return null;
+        return (JsonSerializer.Deserialize<List<SourceFile>>(b.Sources, Json) ?? [], JsonSerializer.Deserialize<List<LibraryRef>>(b.Libraries, Json) ?? [], b.Hash, b.AppVersion);
+    }
 
     /// <summary>Compiles the library's saved files as a new (immutable) version.</summary>
     public async Task<BuildResult> PublishLibraryAsync(string key, string version, CancellationToken ct)

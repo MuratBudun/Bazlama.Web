@@ -75,16 +75,20 @@ npm run build        # outputs to src/Bazlama.Host/wwwroot (gitignored), served 
   - Installing a new app version rebuilds its code (`IAppInstallListener`). If that fails, the code is unloaded ("stale").
   - The Development API writes only when `PlatformInfo.CanDevelop`, that is EnvironmentMode=Development.
   - Completion uses Roslyn `CompletionService` (`CodeCompletion`).
+  - Code checks and completion use the app's draft definition when there is one (`CodeBuildService.EditingDefinitionAsync`), so new fields are usable before publishing. Builds use the installed definition.
+- **Drafts and packages** (`src/Bazlama.Modules.Development`, `src/Bazlama.Packaging`).
+  - The designers edit a whole draft definition (`sys_app_drafts`, JSON, may be invalid). Publishing turns it into an immutable version: the code must compile against it, then `AppInstaller` installs it and the draft is deleted.
+  - `.bzapp` = zip of `manifest.json` (SHA-256 per file), `metadata/app.json`, `code/…`, `libs/<key>/<version>/…`. `PackageFormat` writes and verifies it; `PackageService` exports the installed version with its active build and imports (new library versions must compile to the packaged hash; the app's code hash is compared after install).
+  - Outside Development installations, `/api/management/apps/plan|install` (bare JSON) are refused; apps arrive only as packages.
 - **Development UI** (`web/src/development/`). `workspace.ts` is the Monaco workspace: file list, markers from `/check`, completion from `/complete`.
   - Monaco is imported only in `monaco.ts`: the editor core, `features/register.all` and the C# grammar. It is loaded with a dynamic import.
 - **Web runtime** (`web/src/runtime/`). Lists, forms and detail grids are drawn from the metadata. Field editors and grid formatting are in `fields.ts`.
   - The core template treats every function value as a reactive binding. To pass a function to a property (for example `.pick`), wrap it: `.pick=${() => () => pick()}`.
   - `loading()` builds page bodies untracked. Keep it that way, or typing into a form rebuilds the page.
-- **App code (planned, Faz 3).** App code is server-side C#. Roslyn compiles it to one DLL per app version, and each version loads into its own collectible `AssemblyLoadContext`.
 - **Web UI (`web/`).** Built on the user's own zero-dependency web component library (`bz-*` elements, signals, the `html` template, and `@bazlama/router` with `definePage` and hash routing).
   - The `@bazlama/*` packages are consumed **from source in the sibling repo** `../Bazlama.Web.Component/next/packages`, through aliases in `web/vite.config.ts` and `web/tsconfig.json`. Both repos must sit in the same parent folder.
   - The component library's README (`../Bazlama.Web.Component/next/README.md`) documents the component APIs and design rules.
-  - Monaco is to be loaded lazily, and only in the Development area.
+  - Monaco is loaded lazily, and only in the Development area. The designers are `web/src/development/designer.ts`.
 
 ## Conventions
 

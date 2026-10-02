@@ -20,8 +20,9 @@ export const SESSION_LOST = "bazlama:session-lost"
 async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" }
   if (method !== "GET") headers["X-Bazlama-Request"] = "1"
-  if (body !== undefined) headers["Content-Type"] = "application/json"
-  const res = await fetch(`/api${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal })
+  const raw = body instanceof Blob
+  if (body !== undefined) headers["Content-Type"] = raw ? "application/octet-stream" : "application/json"
+  const res = await fetch(`/api${path}`, { method, headers, body: body === undefined ? undefined : raw ? body : JSON.stringify(body), signal })
   if (res.status === 204) return undefined as T
   const data: unknown = res.headers.get("Content-Type")?.includes("json") ? await res.json() : null
   if (!res.ok) {
@@ -45,7 +46,13 @@ export const api = {
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body ?? {}),
   put: <T>(path: string, body: unknown) => request<T>("PUT", path, body),
   delete: <T>(path: string) => request<T>("DELETE", path),
+  /** POST a file as the raw body. */
+  upload: <T>(path: string, file: Blob) => request<T>("POST", path, file),
 }
+
+let info: Promise<SystemInfo> | null = null
+/** /api/system/info, fetched once (the environment does not change while running). */
+export const systemInfo = () => (info ??= api.get<SystemInfo>("/system/info").catch((e: unknown) => ((info = null), Promise.reject(e))))
 
 /** The message to show for a failed call. */
 export const errorText = (e: unknown) => (e instanceof ApiError ? e.errors.join(" ") : e instanceof Error ? e.message : String(e))

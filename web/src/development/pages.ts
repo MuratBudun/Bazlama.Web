@@ -1,6 +1,7 @@
 import { html, signal } from "@bazlama/core"
 import { dialogs, icon, toast, type GridColumn } from "@bazlama/headless"
 import { definePage } from "@bazlama/router"
+import { appNav } from "./designer"
 import { api, ApiError, errorText } from "../api"
 import { checkField, dataGrid, dateTime, formDialog, loader, loading, textField } from "../management/ui"
 import { forgetRuntimeApps } from "../runtime/api"
@@ -9,11 +10,13 @@ import { codeWorkspace, unsavedGuard, type CheckResult, type CodeDiagnostic, typ
 interface DevApp {
   key: string
   name: string
-  version: string
+  version: string | null
   fileCount: number
   activeBuild: { number: number; appVersion: string; hash: string; createdAt: string } | null
   loaded: boolean
   stale: boolean
+  installed: boolean
+  hasDraft: boolean
 }
 interface LibraryRow {
   key: string
@@ -70,8 +73,22 @@ export const devHome = definePage({
       })
       if (ok) void ctx.navigate(`/development/libraries/${f.key()}`)
     }
+    const newApp = async () => {
+      const f = { key: signal(""), name: signal(""), description: signal("") }
+      const ok = await formDialog({
+        heading: "Yeni uygulama",
+        submitText: "Oluştur",
+        body: () => html`<bz-form-layout columns="2" min-column-width="12rem">
+          ${textField("Anahtar", f.key, { required: true, hint: "küçük harf, rakam, _ (en fazla 20; tablo adlarında kullanılır)" })} ${textField("Ad", f.name, { required: true })}
+          ${textField("Açıklama", f.description, { span: true })}
+        </bz-form-layout>`,
+        submit: () => api.post("/development/apps", { key: f.key(), name: f.name(), description: f.description() || null }),
+      })
+      if (ok) void ctx.navigate(`/development/apps/${f.key()}`)
+    }
     const appColumns: GridColumn<DevApp>[] = [
-      { key: "name", header: "Uygulama", width: 240, flex: true, format: (v, a) => html`<strong>${v as string}</strong> <span class="muted small">${a.key} · v${a.version}</span>` },
+      { key: "name", header: "Uygulama", width: 240, flex: true, format: (v, a) => html`<strong>${v as string}</strong> <span class="muted small">${a.key}${a.version ? ` · v${a.version}` : ""}</span>` },
+      { key: "hasDraft", header: "Tanım", width: 150, format: (_, a) => (!a.installed ? html`<bz-badge variant="neutral">Yayınlanmadı</bz-badge>` : a.hasDraft ? html`<bz-badge variant="warning">Taslak var</bz-badge>` : html`<span class="muted small">Yayında</span>`) },
       { key: "fileCount", header: "Dosya", width: 90, align: "end" },
       { key: "status", header: "Kod", width: 180, format: (_, a) => status(a) },
       { key: "built", header: "Son derleme", width: 160, format: (_, a) => (a.activeBuild ? dateTime(a.activeBuild.createdAt) : "") },
@@ -83,10 +100,11 @@ export const devHome = definePage({
     ]
     return html`<div class="page">
       <div class="page-head">${icon("code", { size: 22 })}<h1>Geliştirme</h1></div>
-      <p class="muted">Uygulamaların sunucu tarafı C# kodu: entity olayları (doğrulama, kaydetmeden önce/sonra, silme) ve formlardaki eylem düğmeleri. Ortak kod, versiyonlu kod kütüphanelerinde durur.</p>
-      <h2>Uygulamalar</h2>
+      <p class="muted">Uygulamaların tasarımı (entity, alan, liste ve form) ve sunucu tarafı C# kodu (olaylar ve form eylemleri). Taslak yayınlanınca değiştirilemez bir versiyon olur; ortak kod versiyonlu kod kütüphanelerinde durur.</p>
+      <div class="row"><h2>Uygulamalar</h2><span class="spacer"></span>
+        <bz-button @click=${newApp}>${icon("plus")} Yeni uygulama</bz-button></div>
       ${loading(apps, () => dataGrid({ label: "Uygulamalar", persist: "dev-apps", columns: appColumns, rows: () => apps.data() ?? [], rowKey: "key",
-        onOpen: (a) => void ctx.navigate(`/development/apps/${a.key}`), empty: "Kurulu uygulama yok (Yönetim › Uygulamalar)." }))}
+        onOpen: (a) => void ctx.navigate(`/development/apps/${a.key}`), empty: "Uygulama yok: Yeni uygulama ile başlayın." }))}
       <div class="row"><h2>Kod kütüphaneleri</h2><span class="spacer"></span>
         <bz-button @click=${newLibrary}>${icon("plus")} Yeni kütüphane</bz-button></div>
       ${loading(libs, () => dataGrid({ label: "Kod kütüphaneleri", persist: "dev-libs", columns: libColumns, rows: () => libs.data() ?? [], rowKey: "key",
@@ -168,6 +186,7 @@ export const appCodePage = definePage({
         <div class="page-head">
           <bz-button variant="ghost" size="sm" aria-label="Geliştirmeye dön" @click=${() => void ctx.navigate("/development")}>${icon("arrow-left")}</bz-button>
           <h1>${w.app.name}</h1><span class="muted small">v${w.app.version} · ${w.app.namespace}</span>
+          ${appNav(ctx, key, "code")}
           ${w.activeBuild ? html`<bz-badge variant=${w.loaded ? "success" : "warning"}>Build #${w.activeBuild.number}${w.loaded ? "" : " (yüklü değil)"}</bz-badge>` : null}
           <span class="spacer"></span>
           <bz-button @click=${libraries}>${icon("layers")} Kütüphaneler${w.libraries.length ? ` (${w.libraries.length})` : ""}</bz-button>
