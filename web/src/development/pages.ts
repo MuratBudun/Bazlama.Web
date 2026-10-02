@@ -1,11 +1,12 @@
-import { html, signal } from "@bazlama/core"
+import { html, onCleanup, signal } from "@bazlama/core"
 import { dialogs, icon, toast, type GridColumn } from "@bazlama/headless"
 import { definePage } from "@bazlama/router"
-import { appNav } from "./designer"
-import { api, ApiError, errorText } from "../api"
-import { checkField, dataGrid, dateTime, formDialog, loader, loading, textField } from "../management/ui"
-import { forgetRuntimeApps } from "../runtime/api"
-import { codeWorkspace, unsavedGuard, type CheckResult, type CodeDiagnostic, type CompletionEntry, type SourceFile } from "./workspace"
+import { api } from "../api"
+import { checkField, confirmAction, dataGrid, dateTime, formDialog, loader, loading, textField } from "../management/ui"
+import { className, codeFiles, codeTree, validPath, type CheckResult, type CompletionEntry, type SourceFile } from "./code"
+import "./components/code-editor"
+import type { WorkbenchElement, WorkbenchModel } from "./components/workbench"
+import "./components/workbench"
 
 interface DevApp {
   key: string
@@ -24,28 +25,6 @@ interface LibraryRow {
   description: string | null
   versions: string[]
 }
-interface LibraryRef {
-  key: string
-  version: string
-}
-interface Workspace {
-  app: { key: string; name: string; version: string; namespace: string }
-  files: SourceFile[]
-  generated: SourceFile
-  libraries: LibraryRef[]
-  activeBuild: DevApp["activeBuild"]
-  loaded: { buildNumber: number; events: Record<string, string[]>; actions: Record<string, string[]> } | null
-}
-interface BuildResult {
-  success: boolean
-  number: number | null
-  hash: string | null
-  diagnostics: CodeDiagnostic[]
-  errors: string[]
-}
-
-const className = (path: string) => (path.split("/").pop() ?? "Kod").replace(/\.cs$/, "").replace(/[^A-Za-z0-9_]/g, "") || "Kod"
-
 const status = (a: DevApp) =>
   a.stale
     ? html`<bz-badge variant="warning">Yeniden derlenmeli</bz-badge>`
@@ -113,92 +92,6 @@ export const devHome = definePage({
   },
 })
 
-/** Shows a failed build's diagnostics in a dialog. */
-function showBuildFailure(r: BuildResult) {
-  void dialogs.open({
-    heading: "Derlenemedi",
-    size: "lg",
-    content: html`<div class="stack">
-      ${r.errors.map((e) => html`<bz-alert variant="danger">${e}</bz-alert>`)}
-      <ul class="changes">${r.diagnostics.filter((d) => d.severity === "error").map((d) => html`<li class="destructive">${d.path}:${d.line} — ${d.message}</li>`)}</ul>
-    </div>`,
-  })
-}
-
-export const appCodePage = definePage({
-  title: "Kod",
-  setup(ctx) {
-    const key = ctx.params().app
-    const ws = loader(() => api.get<Workspace>(`/development/apps/${key}/workspace`))
-    return html`<div class="page code-page">${loading(ws, () => {
-      const w = ws.data()!
-      const busy = signal(false)
-      const workspace = codeWorkspace({
-        files: w.files,
-        readonly: [w.generated],
-        save: (f) => api.put(`/development/apps/${key}/files`, f),
-        remove: (path) => api.delete(`/development/apps/${key}/files?path=${encodeURIComponent(path)}`),
-        check: (files) => api.post<CheckResult>(`/development/apps/${key}/check`, { files }),
-        complete: (files, path, line, column) => api.post<CompletionEntry[]>(`/development/apps/${key}/complete`, { files, path, line, column }),
-        template: (path) => `// ${path}\n// Entity sınıfları: ${w.app.namespace} (üretilen dosyaya bakın).\n\npublic class ${className(path)} : EntityEvents<${className(path).replace(/Events$/, "")}>\n{\n    public override Task ValidateAsync(${className(path).replace(/Events$/, "")} record, bool isNew, Errors errors, IAppContext context)\n    {\n        return Task.CompletedTask;\n    }\n}\n`,
-      })
-      ctx.onBeforeLeave(unsavedGuard(workspace.dirtyCount))
-
-      const build = async () => {
-        busy.set(true)
-        try {
-          await workspace.saveAll()
-          const r = await api.post<BuildResult>(`/development/apps/${key}/build`)
-          toast.success(`Build #${r.number} etkin.`)
-          forgetRuntimeApps()
-          await ws.reload()
-        } catch (e) {
-          if (e instanceof ApiError && e.status === 400 && e.body) showBuildFailure(e.body as BuildResult)
-          else toast.error(errorText(e))
-        } finally {
-          busy.set(false)
-        }
-      }
-      const libraries = async () => {
-        const all = await api.get<LibraryRow[]>("/development/libraries")
-        const chosen = Object.fromEntries(all.map((l) => [l.key, signal(w.libraries.find((x) => x.key === l.key)?.version ?? "")]))
-        const ok = await formDialog({
-          heading: "Kullanılan kütüphaneler",
-          body: () => html`${all.length === 0 ? html`<p class="muted">Kütüphane yok.</p>` : null}
-            ${all.map((l) => html`<bz-combobox label=${l.name} .value=${chosen[l.key]} @change=${(e: CustomEvent<{ value: string }>) => chosen[l.key].set(e.detail.value)}>
-              <bz-option value="">Kullanılmıyor</bz-option>
-              ${l.versions.map((v) => html`<bz-option value=${v}>${v}</bz-option>`)}
-            </bz-combobox>`)}`,
-          submit: () => api.put(`/development/apps/${key}/libraries`, all.filter((l) => chosen[l.key]()).map((l) => ({ key: l.key, version: chosen[l.key]() }))),
-        })
-        if (ok) {
-          await ws.reload()
-          toast.info("Kütüphaneler değişti; etkinleştirmek için derleyin.")
-        }
-      }
-      const loadedText = () => {
-        if (!w.loaded) return "Çalışan kod yok."
-        const events = Object.entries(w.loaded.events).map(([e, t]) => `${e}: ${t.join(", ")}`)
-        const actions = Object.entries(w.loaded.actions).map(([e, a]) => `${e}: ${a.join(", ")}`)
-        return [events.length ? `Olaylar — ${events.join(" · ")}` : "", actions.length ? `Eylemler — ${actions.join(" · ")}` : ""].filter(Boolean).join("   ") || "Kod yüklü; olay veya eylem yok."
-      }
-      return html`
-        <div class="page-head">
-          <bz-button variant="ghost" size="sm" aria-label="Geliştirmeye dön" @click=${() => void ctx.navigate("/development")}>${icon("arrow-left")}</bz-button>
-          <h1>${w.app.name}</h1><span class="muted small">v${w.app.version} · ${w.app.namespace}</span>
-          ${appNav(ctx, key, "code")}
-          ${w.activeBuild ? html`<bz-badge variant=${w.loaded ? "success" : "warning"}>Build #${w.activeBuild.number}${w.loaded ? "" : " (yüklü değil)"}</bz-badge>` : null}
-          <span class="spacer"></span>
-          <bz-button @click=${libraries}>${icon("layers")} Kütüphaneler${w.libraries.length ? ` (${w.libraries.length})` : ""}</bz-button>
-          <bz-button @click=${() => void workspace.saveAll().then(() => toast.success("Kaydedildi."))}>${icon("download")} Kaydet</bz-button>
-          <bz-button variant="primary" ?loading=${busy} @click=${build}>${icon("check")} Derle ve etkinleştir</bz-button>
-        </div>
-        <p class="muted small">${loadedText()}</p>
-        ${workspace.view}`
-    })}</div>`
-  },
-})
-
 export const libraryPage = definePage({
   title: "Kod kütüphanesi",
   setup(ctx) {
@@ -206,23 +99,81 @@ export const libraryPage = definePage({
     const lib = loader(() => api.get<{ key: string; name: string; description: string | null; files: SourceFile[]; versions: { version: string; hash: string; createdAt: string }[] }>(`/development/libraries/${key}`))
     return html`<div class="page code-page">${loading(lib, () => {
       const l = lib.data()!
-      const workspace = codeWorkspace({
+      const versions = signal(l.versions)
+      const files = codeFiles({
         files: l.files,
         save: (f) => api.put(`/development/libraries/${key}/files`, f),
         remove: (path) => api.delete(`/development/libraries/${key}/files?path=${encodeURIComponent(path)}`),
-        check: (files) => api.post<CheckResult>(`/development/libraries/${key}/check`, { files }),
-        complete: (files, path, line, column) => api.post<CompletionEntry[]>(`/development/libraries/${key}/complete`, { files, path, line, column }),
-        template: (path) => `// ${path}\nnamespace Ortak;\n\npublic static class ${className(path)}\n{\n}\n`,
+        check: (fs) => api.post<CheckResult>(`/development/libraries/${key}/check`, { files: fs }),
+        complete: (fs, path, line, column) => api.post<CompletionEntry[]>(`/development/libraries/${key}/complete`, { files: fs, path, line, column }),
       })
-      ctx.onBeforeLeave(unsavedGuard(workspace.dirtyCount))
+      onCleanup(files.dispose)
+      void files.check()
+      let bench: WorkbenchElement | undefined
+      ctx.onBeforeLeave(async () =>
+        files.dirty().size === 0 ||
+        dialogs.confirm({ heading: "Kaydedilmemiş dosyalar", message: `${files.dirty().size} dosyada kaydedilmemiş değişiklik var. Çıkılsın mı?`, confirmText: "Çık", cancelText: "Kal", variant: "danger" }),
+      )
+
+      const newFile = async (folder = "") => {
+        const path = signal(folder ? `${folder}/` : "")
+        const ok = await formDialog({
+          heading: "Yeni dosya",
+          submitText: "Oluştur",
+          body: () => html`${textField("Dosya yolu", path, { required: true, hint: "Örn. Ortak/Metin.cs" })}`,
+          submit: async () => {
+            const p = path().trim().replace(/\\/g, "/")
+            if (!validPath(p)) throw new Error("Dosya yolu harf, rakam, _ ve - içerebilir ve .cs ile bitmeli.")
+            await files.create(p, `// ${p}\nnamespace Ortak;\n\npublic static class ${className(p)}\n{\n}\n`)
+            path.set(p)
+          },
+        })
+        if (ok) bench?.open(`file:${path()}`)
+      }
+      const removeFile = (path: string) =>
+        confirmAction({ heading: "Dosyayı sil", message: `${path} silinsin mi?`, confirmText: "Sil", danger: true, action: () => files.remove(path) })
+
+      const model: WorkbenchModel = {
+        label: "Gezgin",
+        persist: `library:${key}`,
+        tree: () => [{ id: "code", label: l.name, icon: "book", children: codeTree(files.paths(), files.errorCounts()) }],
+        initial: files.paths().slice(0, 1).map((p) => `file:${p}`),
+        expanded: ["code"],
+        tab(id) {
+          if (!id.startsWith("file:")) return null
+          const path = id.slice(5)
+          return {
+            title: () => path.split("/").pop()!,
+            icon: "file-text",
+            detail: path,
+            dirty: () => files.dirty().has(path),
+            content: () => html`<bazlama-code-editor .files=${files} path=${path}></bazlama-code-editor>`,
+          }
+        },
+        menu(id) {
+          if (id?.startsWith("file:")) return [{ value: "open", label: "Aç", icon: "external-link" }, { type: "separator" }, { value: "remove", label: "Sil", icon: "trash", variant: "danger" }]
+          return [{ value: "new", label: "Yeni dosya", icon: "plus" }]
+        },
+        command(value, id) {
+          if (value === "open" && id) bench?.open(id)
+          else if (value === "remove" && id) void removeFile(id.slice(5))
+          else if (value === "new") void newFile(id?.startsWith("folder:") ? id.slice(7) : "")
+        },
+        actions: () => html`<bz-button size="sm" variant="ghost" aria-label="Yeni dosya" data-tooltip="Yeni dosya" @click=${() => void newFile()}>${icon("plus")}</bz-button>`,
+        problems: () =>
+          files.diagnostics().map((d) => ({ severity: d.severity, tab: `file:${d.path}`, where: `${d.path}:${d.line}`, message: d.message, code: d.code, line: d.line, column: d.column })),
+        checking: files.checking,
+        save: (id) => (id.startsWith("file:") ? files.save(id.slice(5)).catch(() => {}) : undefined),
+      }
+
       const next = () => {
-        const last = l.versions[0]?.version
+        const last = versions()[0]?.version
         if (!last) return "1.0.0"
         const [a, b, c] = last.split(".").map(Number)
         return `${a}.${b}.${c + 1}`
       }
       const publish = async () => {
-        await workspace.saveAll()
+        await files.saveAll()
         const version = signal(next())
         const understood = signal(false)
         const ok = await formDialog({
@@ -237,19 +188,20 @@ export const libraryPage = definePage({
         })
         if (ok) {
           toast.success(`${l.name} ${version()} yayınlandı.`)
-          await lib.reload()
+          versions.set((await api.get<typeof l>(`/development/libraries/${key}`)).versions)
         }
       }
       return html`
         <div class="page-head">
+          <bz-button variant="ghost" size="sm" class="menu-toggle" data-shell-toggle="start" aria-label="Menüyü gizle / göster" data-tooltip="Menüyü gizle / göster">${icon("chevrons-left")}</bz-button>
           <bz-button variant="ghost" size="sm" aria-label="Geliştirmeye dön" @click=${() => void ctx.navigate("/development")}>${icon("arrow-left")}</bz-button>
-          <h1>${l.name}</h1><span class="muted small">${l.key}${l.versions.length ? ` · ${l.versions.map((v) => v.version).join(", ")}` : " · yayınlanmadı"}</span>
+          <h1>${l.name}</h1><span class="muted small">${() => `${l.key}${versions().length ? ` · ${versions().map((v) => v.version).join(", ")}` : " · yayınlanmadı"}`}</span>
           <span class="spacer"></span>
-          <bz-button @click=${() => void workspace.saveAll().then(() => toast.success("Kaydedildi."))}>${icon("download")} Kaydet</bz-button>
+          <bz-button ?disabled=${() => files.dirty().size === 0} @click=${() => void files.saveAll().then(() => toast.success("Kaydedildi."), () => {})}>${icon("download")} Kaydet</bz-button>
           <bz-button variant="primary" @click=${publish}>${icon("upload")} Versiyon yayınla</bz-button>
         </div>
         ${l.description ? html`<p class="muted small">${l.description}</p>` : null}
-        ${workspace.view}`
+        <bazlama-workbench data-shell-fill .model=${model} ref=${(el: WorkbenchElement) => (bench = el)}></bazlama-workbench>`
     })}</div>`
   },
 })

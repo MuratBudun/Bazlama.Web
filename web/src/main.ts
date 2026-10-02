@@ -12,7 +12,7 @@ import { changePassword } from "./auth/password-dialog"
 import { canManage, managementNav, managementRoutes } from "./management"
 import homePage from "./pages/home"
 import { loadRuntimeApps } from "./runtime/api"
-import { appPage, listPage, recordPage, runtimeHome, runtimeNav } from "./runtime/pages"
+import { appPage, listPage, recordPage, runtimeGroups, runtimeHome, runtimeNav } from "./runtime/pages"
 import { can, contextText, isActive, logout, me, refreshMe } from "./session"
 
 /*
@@ -33,9 +33,7 @@ const router = createRouter({
     { path: "/runtime/:app/:entity", page: listPage, remount: true },
     { path: "/runtime/:app/:entity/:id", page: recordPage, remount: true },
     { path: "/development", page: () => import("./development/pages").then((m) => m.devHome) },
-    { path: "/development/apps/:app", page: () => import("./development/designer").then((m) => m.appDesignPage), remount: true },
-    { path: "/development/apps/:app/entities/:entity", page: () => import("./development/designer").then((m) => m.entityDesignPage), remount: true },
-    { path: "/development/apps/:app/code", page: () => import("./development/pages").then((m) => m.appCodePage), remount: true },
+    { path: "/development/apps/:app", page: () => import("./development/app-page").then((m) => m.appPage), remount: true },
     { path: "/development/libraries/:key", page: () => import("./development/pages").then((m) => m.libraryPage), remount: true },
     ...managementRoutes,
   ],
@@ -57,13 +55,25 @@ const nav = computed<TreeItem[]>(() => {
   return items
 })
 const flatten = (items: TreeItem[]): TreeItem[] => items.flatMap((n) => [n, ...flatten(n.children ?? [])])
-/** The deepest menu item the current path is under ("/management/users/42" → Kullanıcılar). */
+/**
+ * The menu item of the current page. App menu items carry their list or form in the id
+ * ("/runtime/satis/siparis?list=acik"): a record opened from a list marks that list. Otherwise
+ * the deepest item the path is under ("/management/users/42" → Kullanıcılar).
+ */
 const current = computed(() => {
-  const path = router.current()?.path ?? "/"
-  return flatten(nav()).filter((n) => n.href && (path === n.id || path.startsWith(`${n.id}/`))).sort((a, b) => b.id.length - a.id.length)[0]?.id ?? ""
+  const state = router.current()
+  const path = state?.path ?? "/"
+  const list = state?.query.get("list")
+  const form = state?.query.get("form")
+  const items = flatten(nav()).filter((n) => n.href)
+  const exact = [list ? `${path.split("/").slice(0, 4).join("/")}?list=${list}` : "", form ? `${path}?form=${form}` : ""]
+  const hit = items.find((n) => exact.includes(n.id))
+  if (hit) return hit.id
+  const base = (id: string) => id.split("?")[0]
+  return items.filter((n) => path === base(n.id) || path.startsWith(`${base(n.id)}/`)).sort((a, b) => b.id.length - a.id.length)[0]?.id ?? ""
 })
-/** Groups stay open: apps and management. */
-const expanded = computed(() => ["/runtime", "/management", ...appsNav().map((a) => a.id)])
+/** Groups stay open: apps (with their menu groups) and management. */
+const expanded = computed(() => ["/runtime", "/management", ...runtimeGroups(appsNav)])
 
 const onUserMenu = async (e: CustomEvent<{ value: string }>) => {
   try {
@@ -77,7 +87,7 @@ const onUserMenu = async (e: CustomEvent<{ value: string }>) => {
 }
 
 const shell = () => html`
-  <bz-shell resizable persist="bazlama" resize-label="Menüyü boyutlandır" skip-label="İçeriğe geç" .busy=${router.pending}>
+  <bz-shell resizable start-collapse="hidden" persist="bazlama" resize-label="Menüyü boyutlandır" skip-label="İçeriğe geç" .busy=${router.pending}>
     <bz-header slot="header" title="Bazlama" href=${router.href("/")} menu-label="Menü"
       user-name=${() => me()?.user?.displayName ?? ""} user-detail=${contextText} user-label="Kullanıcı menüsü" @select=${onUserMenu}>
       <bz-icon slot="logo" name="layers" size="24"></bz-icon>

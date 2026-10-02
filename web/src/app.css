@@ -297,86 +297,107 @@ pre.json {
 .code-page {
   padding-bottom: 1rem;
 }
-.workspace {
+/*
+ * <bazlama-workbench>: explorer | editor tabs over the problems panel (bz-split). It fills the
+ * rest of the page (data-shell-fill).
+ */
+bazlama-workbench {
   display: grid;
-  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
-  grid-template-areas: "files editor" "problems problems";
-  min-height: 0;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  min-height: 24rem;
   border: 1px solid var(--bz-color-border);
   border-radius: var(--bz-radius);
   overflow: hidden;
   background: var(--bz-color-surface);
 }
-.workspace .files {
-  grid-area: files;
-  display: grid;
-  align-content: start;
-  gap: 0.35rem;
-  padding: 0.5rem;
-  overflow: auto;
-  border-inline-end: 1px solid var(--bz-color-border);
-}
-.workspace ul {
+bazlama-workbench ul {
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.workspace .files li {
+.wb-head {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  padding: 0 0.4rem 0 0.75rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bz-color-fg-muted);
 }
-.workspace .file {
-  flex: 1;
+.wb-head .small {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.wb-explorer {
   display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-width: 0;
-  padding: 0.3rem 0.4rem;
-  font: inherit;
-  font-size: 0.875rem;
-  text-align: start;
-  color: inherit;
-  background: none;
-  border: 0;
-  border-radius: var(--bz-radius-sm);
-  cursor: pointer;
-}
-.workspace .file:hover {
+  flex-direction: column;
+  min-height: 0;
   background: var(--bz-color-bg);
 }
-.workspace .file.current {
-  background: color-mix(in srgb, var(--bz-color-primary) 12%, transparent);
-}
-.workspace .file .name {
+.wb-explorer > bz-tree {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 0.5rem;
 }
-.workspace .dot {
+.wb-explorer bz-tree [data-part="badge"] {
+  color: var(--bz-color-danger);
+}
+.wb-editors {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.wb-empty {
+  margin: auto;
+  padding: 2rem;
+}
+.wb-editors > bz-tabs > bz-tab-list bz-tab {
+  gap: 0.35rem;
+}
+.wb-dirty {
   color: var(--bz-color-primary);
   font-size: 0.7rem;
 }
-.workspace .editor-host {
-  grid-area: editor;
-  position: relative;
-  min-height: 0;
+/* A code tab: the editor fills the panel and scrolls itself. */
+.wb-editors > bz-tabs > bz-tab-panel:has(> bazlama-code-editor) {
+  overflow: hidden;
+  padding: 0;
 }
-.workspace .editor-host .loading {
+bazlama-code-editor {
+  position: relative;
+  display: block;
+  height: 100%;
+}
+bazlama-code-editor > [data-part="editor"] {
+  position: absolute;
+  inset: 0;
+}
+bazlama-code-editor > [data-part="loading"] {
   position: absolute;
   inset: 1rem;
 }
-.workspace .problems {
-  grid-area: problems;
-  display: grid;
-  gap: 0.25rem;
-  max-height: 11rem;
-  padding: 0.4rem 0.6rem;
-  overflow: auto;
-  border-top: 1px solid var(--bz-color-border);
+/* An editor tab (entity, app): a scrolling page. */
+.editor-page {
+  padding: 1rem 1.25rem 2rem;
 }
-.workspace .problem {
+.editor-page > .page-head h1 {
+  font-size: 1.2rem;
+}
+.wb-problems {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.wb-problems > ul {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 0.5rem 0.4rem;
+}
+.wb-problems .problem {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
@@ -388,58 +409,194 @@ pre.json {
   color: inherit;
   background: none;
   border: 0;
+  border-radius: var(--bz-radius-sm);
   cursor: pointer;
 }
-.workspace .problem:hover {
+.wb-problems .problem:hover {
   background: var(--bz-color-bg);
 }
-.workspace .problem.error > :first-child {
+.wb-problems .problem.error > :first-child {
   color: var(--bz-color-danger);
 }
-.workspace .problem.warning > :first-child {
+.wb-problems .problem.warning > :first-child {
   color: var(--bz-color-warning, #b7791f);
 }
-.workspace .problem .where {
+.wb-problems .problem .where {
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
   white-space: nowrap;
 }
-.workspace .problem .message {
+.wb-problems .problem .message {
   flex: 1;
-}
-@media (max-width: 720px) {
-  .workspace {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "files" "editor" "problems";
-  }
-  .workspace {
-    grid-template-rows: auto minmax(18rem, 1fr) auto;
-  }
-  .workspace .files {
-    border-inline-end: 0;
-    border-bottom: 1px solid var(--bz-color-border);
-    max-height: 10rem;
-  }
 }
 
 /* ── Designers ─────────────────────────────────────────────────────────── */
-.designer-grid {
+/* Entity editor: fields | properties of the selection; the tab panel is filled, each side scrolls. */
+.wb-editors > bz-tabs > bz-tab-panel:has(> :is(bazlama-entity-editor, bazlama-menu-designer)) {
+  overflow: hidden;
+  padding: 0;
+}
+bazlama-entity-editor,
+bazlama-menu-designer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.ee-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--bz-color-border);
+}
+.ee-head h1 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+:is(bazlama-entity-editor, bazlama-menu-designer) > bz-alert {
+  margin: 0.75rem 1rem 0;
+}
+.ee-split {
+  flex: 1;
+  min-height: 0;
+}
+.ee-fields {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.ee-fields > bz-toolbar {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--bz-color-border);
+}
+/* The menu tree in the menu designer's left pane. */
+.ee-fields > .md-tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.35rem;
+}
+.ee-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.35rem;
+  border: 0;
+}
+.ee-list > .ee-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.ee-list > .ee-row > svg,
+.ee-mark {
+  flex: none;
+  color: var(--bz-color-fg-muted);
+}
+.ee-list > .ee-entity {
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--bz-color-border);
+  border-radius: 0;
+}
+.ee-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ee-key {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--bz-color-fg-muted);
+  white-space: nowrap;
+}
+.ee-type {
+  flex: none;
+  min-width: 6.5rem;
+  font-size: 0.8rem;
+  text-align: end;
+  color: var(--bz-color-fg-muted);
+}
+.ee-empty {
+  padding: 0 1rem;
+}
+.ee-inspector {
+  overflow: auto;
+  background: var(--bz-color-bg);
+}
+.ee-props {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
+  gap: 0.75rem;
+  padding: 0.5rem 1rem 1.5rem;
+}
+.ee-props h3 {
+  margin: 0.6rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bz-color-fg-muted);
+}
+.ee-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+/* Form designer: sections next to a preview of the runtime form. */
+.fd-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr));
   gap: 1rem;
   align-items: start;
 }
-.checks.inline {
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-}
-.form-section-editor {
+.fd-section {
   display: grid;
   gap: 0.6rem;
   padding: 0.75rem;
   border: 1px solid var(--bz-color-border);
   border-radius: var(--bz-radius-md, 0.5rem);
 }
-.form-section-editor > .row > bz-input {
+.fd-section > .row {
+  flex-wrap: nowrap;
+}
+.fd-section > .row > bz-input {
   flex: 1;
+  min-width: 0;
+}
+.fd-fields {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fd-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0.25rem 0.15rem 0.5rem;
+  border-radius: var(--bz-radius-sm);
+  background: var(--bz-color-bg);
+}
+.fd-field > :first-child {
+  color: var(--bz-color-fg-muted);
+}
+.fd-preview {
+  display: grid;
+  gap: 1rem;
+}
+.fd-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--bz-color-border);
+  border-radius: var(--bz-radius-md, 0.5rem);
+}
+/* The menu toggle in a page head: the arrow turns when the menu is hidden. */
+.menu-toggle[aria-expanded="false"] > svg {
+  transform: scaleX(-1);
 }
 .row.seg {
   gap: 0.25rem;

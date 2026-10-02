@@ -84,11 +84,11 @@ public abstract class AppEngineProviderTests : IAsyncLifetime
         var siparis = v2["entities"]!.AsArray()[2]!.AsObject();
         siparis["fields"]!.AsArray().RemoveAt(5);
         siparis["fields"]!.AsArray().Add(new JsonObject { ["key"] = "oncelik", ["label"] = "Öncelik", ["type"] = "integer" });
-        siparis["form"] = null;
+        Samples.Unuse(v2, "siparis", "aciklama");
         // A reference column is dropped too (foreign key and index go first).
         var kalem = v2["entities"]!.AsArray()[3]!.AsObject();
         kalem["fields"]!.AsArray().RemoveAt(0);
-        kalem["list"] = null;
+        Samples.Unuse(v2, "kalem", "urun");
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/management/apps/install", new { definition = v2, confirmDestructive = true }, Ct)).StatusCode);
         var after = await (await admin.GetAsync($"{data}/siparis/{order}", Ct)).JsonAsync();
         Assert.Equal("onaylandi", after.GetProperty("durum").GetString());

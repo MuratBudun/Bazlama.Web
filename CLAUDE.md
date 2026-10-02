@@ -54,6 +54,9 @@ npm run build        # outputs to src/Bazlama.Host/wwwroot (gitignored), served 
 - **Audit.** `AuditInterceptor` writes an `AuditEvent` for every change to an `IAudited` entity in the same `SaveChanges`. It masks secrets. Security events (logins, lockouts, MFA) are written explicitly by `AuthService`.
 - **App data engine** (`src/Bazlama.Engine`).
   - **Metadata.** An app is JSON metadata (`Metadata/AppDefinition.cs`; example: `samples/apps/siparis.json`), checked by `MetadataValidator`.
+    - Forms, lists and the menu are app-level: `forms: [{ key, name, entity, sections }]`, `lists: [{ key, name, entity, columns, sortField, sortDescending, form }]`, `menu: [{ label, icon, items | list | form }]` (three levels at most; an item opens a list or a new record's form of a master entity). An entity may have several forms and lists or none (Runtime then shows all fields / the first six). Without a menu Runtime shows one item per master entity.
+    - `AppDefinition.Parse` upgrades the older `entities[].form` / `entities[].list` shape (`Upgrade`), and `GET /draft` does too.
+    - `/api/runtime/apps` serves each app's menu filtered by read permission (`RuntimeModule.MenuOf`). Runtime URLs carry the list and form: `/runtime/<app>/<entity>?list=<key>`, `/runtime/<app>/<entity>/<id|new>?list=&form=`.
   - **Schema.** `SchemaBuilder` turns each entity into a real table, `app_<app>_<entity>`. It adds the system columns (id, the scope columns, parent_id, audit columns, is_deleted, row_version), foreign keys and indexes.
     - App fields are always NULL in the database; "required" is enforced by the engine.
     - Detail entities inherit their master's scope and period binding.
@@ -80,7 +83,15 @@ npm run build        # outputs to src/Bazlama.Host/wwwroot (gitignored), served 
   - The designers edit a whole draft definition (`sys_app_drafts`, JSON, may be invalid). Publishing turns it into an immutable version: the code must compile against it, then `AppInstaller` installs it and the draft is deleted.
   - `.bzapp` = zip of `manifest.json` (SHA-256 per file), `metadata/app.json`, `code/…`, `libs/<key>/<version>/…`. `PackageFormat` writes and verifies it; `PackageService` exports the installed version with its active build and imports (new library versions must compile to the packaged hash; the app's code hash is compared after install).
   - Outside Development installations, `/api/management/apps/plan|install` (bare JSON) are refused; apps arrive only as packages.
-- **Development UI** (`web/src/development/`). `workspace.ts` is the Monaco workspace: file list, markers from `/check`, completion from `/complete`.
+- **Previews** (`src/Bazlama.Compiler/PreviewService.cs`). "Önizle" installs the saved draft under the app's preview key (`<app>_pv`, tables `app_<app>_pv_…`, row in `sys_app_previews`) and loads the saved code compiled against it (`CodeBuildService.LoadPreviewAsync`, same assembly name, loaded under the preview key).
+  - `AppRegistry.GetAsync` finds previews too, so `DataService` and `ActionRunner` work unchanged; `AllAsync` (Runtime menu, permissions, Management) leaves them out. Preview data needs `development.access`. App keys may not end in `_pv`.
+  - Preview data is disposable: drops apply without a confirmation, and type/scope/parent changes start the preview's tables over. Preview code is not reloaded after a host restart (press Önizle again).
+  - The web side is `web/preview.html` + `src/preview.ts`: the Runtime pages under `/preview/…` (`runtimeConfig` in `runtime/api.ts`), loading `/api/runtime/previews/<key>`.
+- **Development UI** (`web/src/development/`). One workbench per app (`app-page.ts`) and per code library (`pages.ts`).
+  - `<bazlama-workbench>` (`components/workbench.ts`): explorer tree, closable editor tabs, problems panel, split by `bz-split`. A `WorkbenchModel` supplies the tree, the tab of each tree item, context menus and problems. Tab ids are tree ids; open tabs are kept per app in localStorage.
+  - Tabs: `bazlama-app-settings`, `bazlama-entity-editor` (fields + properties panel), `bazlama-form-designer` (an app form: sections + runtime preview), `bazlama-list-designer` (columns, sorting, record form + grid preview), `bazlama-menu-designer` (menu tree + properties), `bazlama-code-editor` (Monaco).
+  - `code.ts` owns the Monaco models, unsaved state and server diagnostics (`/check`, `/complete`); editors only show a model. `draft.ts` is the draft store (`partDirty` marks a tab dirty), publish and discard.
+  - Editor tabs build their body once (`untrack`) and bind each value reactively, so typing never rebuilds a tab. The app's own components use the `bazlama-` prefix; `bz-` is the component library's.
   - Monaco is imported only in `monaco.ts`: the editor core, `features/register.all` and the C# grammar. It is loaded with a dynamic import.
 - **Web runtime** (`web/src/runtime/`). Lists, forms and detail grids are drawn from the metadata. Field editors and grid formatting are in `fields.ts`.
   - The core template treats every function value as a reactive binding. To pass a function to a property (for example `.pick`), wrap it: `.pick=${() => () => pick()}`.
@@ -88,7 +99,7 @@ npm run build        # outputs to src/Bazlama.Host/wwwroot (gitignored), served 
 - **Web UI (`web/`).** Built on the user's own zero-dependency web component library (`bz-*` elements, signals, the `html` template, and `@bazlama/router` with `definePage` and hash routing).
   - The `@bazlama/*` packages are consumed **from source in the sibling repo** `../Bazlama.Web.Component/next/packages`, through aliases in `web/vite.config.ts` and `web/tsconfig.json`. Both repos must sit in the same parent folder.
   - The component library's README (`../Bazlama.Web.Component/next/README.md`) documents the component APIs and design rules.
-  - Monaco is loaded lazily, and only in the Development area. The designers are `web/src/development/designer.ts`.
+  - Monaco is loaded lazily, and only in the Development area.
 
 ## Conventions
 

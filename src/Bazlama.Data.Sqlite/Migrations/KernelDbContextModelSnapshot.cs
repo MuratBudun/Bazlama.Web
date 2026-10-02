@@ -262,6 +262,35 @@ namespace Bazlama.Data.Sqlite.Migrations
                     b.ToTable("sys_app_drafts", (string)null);
                 });
 
+            modelBuilder.Entity("Bazlama.Kernel.Code.AppPreview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AppKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppKey")
+                        .IsUnique();
+
+                    b.ToTable("sys_app_previews", (string)null);
+                });
+
             modelBuilder.Entity("Bazlama.Kernel.Code.AppWorkspace", b =>
                 {
                     b.Property<Guid>("Id")

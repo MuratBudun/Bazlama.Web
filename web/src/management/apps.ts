@@ -1,7 +1,7 @@
 import { html, signal } from "@bazlama/core"
 import { dialogs, icon, toast, type GridColumn } from "@bazlama/headless"
 import { definePage } from "@bazlama/router"
-import { api, ApiError, errorText, systemInfo } from "../api"
+import { api, ApiError, downloadFile, errorText, systemInfo } from "../api"
 import { forgetRuntimeApps, loadRuntimeApps } from "../runtime/api"
 import { refreshMe } from "../session"
 import { checkField, dataGrid, dateTime, loader, loading } from "./ui"
@@ -139,6 +139,15 @@ async function install(after: () => Promise<unknown>) {
 
 const LIBRARY_STATUS = { new: "kurulacak", installed: "kurulu (aynı)", conflict: "çakışıyor" }
 
+/** Downloads the installed version as a .bzapp package; a refusal is shown with the server's reason. */
+export async function exportPackage(key: string, version: string) {
+  try {
+    await downloadFile(`/management/apps/${key}/export`, `${key}-${version}.bzapp`)
+  } catch (e) {
+    void dialogs.alert({ heading: "Dışa aktarılamadı", message: errorText(e) })
+  }
+}
+
 /** A .bzapp package: the file → what it would do (schema, libraries, code) → import. */
 async function importPackage(after: () => Promise<unknown>) {
   const file = signal<File | null>(null)
@@ -271,7 +280,7 @@ export const appDetailPage = definePage({
           <bz-button variant="ghost" size="sm" aria-label="Uygulamalara dön" @click=${() => void ctx.navigate("/management/apps")}>${icon("arrow-left")}</bz-button>
           <h1>${def.name}</h1><span class="muted small">v${def.version}</span><span class="spacer"></span>
           <bz-button @click=${download}>${icon("download")} Tanımı indir</bz-button>
-          <a class="button-link" href=${`/api/management/apps/${key}/export`} download>${icon("download")} Dışa aktar (.bzapp)</a>
+          <bz-button @click=${() => exportPackage(key, def.version)}>${icon("download")} Dışa aktar (.bzapp)</bz-button>
           <bz-button variant="primary" @click=${() => importPackage(detail.reload)}>${icon("upload")} Yeni versiyon (paket)</bz-button>
         </div>
         ${def.description ? html`<p class="muted">${def.description}</p>` : null}

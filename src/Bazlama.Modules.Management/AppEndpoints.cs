@@ -102,7 +102,7 @@ static class AppEndpoints
         error = null;
         try
         {
-            app = json.Deserialize<AppDefinition>(AppDefinition.Json) ?? throw new JsonException("Boş tanım.");
+            app = AppDefinition.Parse(json.GetRawText());
             return true;
         }
         catch (JsonException e)

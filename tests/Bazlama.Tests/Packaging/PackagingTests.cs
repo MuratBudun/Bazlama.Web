@@ -161,9 +161,7 @@ public sealed class PackagingTests : IAsyncLifetime
         var draft = Samples.Node("siparis");
         var fields = draft["entities"]!.AsArray()[2]!["fields"]!.AsArray();
         fields.RemoveAt(0); // siparis_no, used by the code
-        draft["entities"]!.AsArray()[2]!["list"] = null;
-        draft["entities"]!.AsArray()[2]!["form"] = null;
-        draft["entities"]!.AsArray()[2]!["titleField"] = null;
+        Samples.Unuse(draft, "siparis", "siparis_no");
         await Ok(await dev.PutAsJsonAsync("/api/development/apps/siparis/draft", draft, Ct));
 
         var publish = await dev.PostAsJsonAsync("/api/development/apps/siparis/publish", new { version = "1.1.0", confirmDestructive = true }, Ct);

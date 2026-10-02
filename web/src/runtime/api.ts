@@ -26,8 +26,37 @@ export interface EntityDef {
   parent?: string
   titleField?: string
   fields: FieldDef[]
-  list?: { columns: string[]; sortField?: string; sortDescending?: boolean }
-  form?: { sections: { title?: string; fields: string[]; columns?: number }[] }
+}
+/** A record list of an entity. An entity may have several lists, or none. */
+export interface ListDef {
+  key: string
+  name: string
+  entity: string
+  columns: string[]
+  sortField?: string
+  sortDescending?: boolean
+  /** The form its records open in (default: the entity's first form). */
+  form?: string
+}
+/** A menu entry: a group (`items`), or an item opening a list or a new record's form. */
+export interface MenuItemDef {
+  label: string
+  icon?: string
+  list?: string
+  form?: string
+  items?: MenuItemDef[]
+}
+export interface FormSection {
+  title?: string
+  fields: string[]
+  columns?: number
+}
+/** A record form of an entity. An entity may have several forms, or none. */
+export interface FormDef {
+  key: string
+  name: string
+  entity: string
+  sections: FormSection[]
 }
 export interface AppDef {
   key: string
@@ -36,6 +65,9 @@ export interface AppDef {
   description?: string
   icon?: string
   entities: EntityDef[]
+  forms?: FormDef[]
+  lists?: ListDef[]
+  menu?: MenuItemDef[]
 }
 export interface RuntimeAppInfo {
   key: string
@@ -44,6 +76,16 @@ export interface RuntimeAppInfo {
   description: string | null
   icon: string | null
   entities: { key: string; name: string; plural: string; icon: string | null }[]
+  /** The menu as far as the user may read (the server filters it). */
+  menu: RuntimeMenuItem[]
+}
+export interface RuntimeMenuItem {
+  label: string
+  icon: string | null
+  entity: string | null
+  list: string | null
+  form: string | null
+  items: RuntimeMenuItem[] | null
 }
 export interface RuntimeApp {
   definition: AppDef
@@ -72,12 +114,42 @@ export function runtimeApp(key: string) {
 /** After an install the definitions change. */
 export const forgetRuntimeApps = () => cache.clear()
 
+/**
+ * Where the Runtime pages live and how they load an app: the platform's Runtime, or (in a
+ * preview tab) a draft's preview, whose records live in tables of its own.
+ */
+export const runtimeConfig: { base: string; load: (key: string) => Promise<RuntimeApp> } = {
+  base: "/runtime",
+  load: (key) => runtimeApp(key),
+}
+
+/** A draft's preview (developers only): the app as Runtime gets it, plus its menu and source app. */
+export interface PreviewApp extends RuntimeApp {
+  menu: RuntimeMenuItem[]
+  source: string
+}
+export const previewApp = (key: string) => api.get<PreviewApp>(`/runtime/previews/${key}`)
+
 export const entityOf = (app: AppDef, key: string) => app.entities.find((e) => e.key === key)
 export const plural = (e: EntityDef) => e.pluralName ?? e.name
 export const titleField = (e: EntityDef) => e.titleField ?? e.fields.find((f) => f.type === "text")?.key ?? e.fields[0]?.key
 export const childrenOf = (app: AppDef, e: EntityDef) => app.entities.filter((x) => x.parent === e.key)
-export const listColumns = (e: EntityDef) => (e.list?.columns.length ? e.list.columns : e.fields.filter((f) => f.type !== "longText").slice(0, 6).map((f) => f.key))
-export const formSections = (e: EntityDef) => (e.form?.sections.length ? e.form.sections : [{ fields: e.fields.map((f) => f.key) }])
+/** Columns of an entity without a list: its first six fields that fit a grid. */
+export const defaultColumns = (e: EntityDef) => e.fields.filter((f) => f.type !== "longText").slice(0, 6).map((f) => f.key)
+export const listsOf = (app: AppDef, e: EntityDef) => (app.lists ?? []).filter((l) => l.entity === e.key)
+/** The list a page shows: the given one, else the entity's first list, else default columns (newest first). */
+export function listOf(app: AppDef, e: EntityDef, key?: string | null): Omit<ListDef, "key" | "entity"> & { key?: string } {
+  const l = (key ? app.lists?.find((x) => x.key === key && x.entity === e.key) : undefined) ?? listsOf(app, e)[0]
+  if (!l) return { name: plural(e), columns: defaultColumns(e) }
+  return { ...l, columns: l.columns.length ? l.columns : defaultColumns(e) }
+}
+export const listColumns = (app: AppDef, e: EntityDef, key?: string | null) => listOf(app, e, key).columns
+export const formsOf = (app: AppDef, e: EntityDef) => (app.forms ?? []).filter((f) => f.entity === e.key)
+/** The sections a record is shown with: the given form, else the entity's first form, else all fields in one section. */
+export const formSections = (app: AppDef, e: EntityDef, form?: string | null): FormSection[] => {
+  const f = (form ? app.forms?.find((x) => x.key === form && x.entity === e.key) : undefined) ?? formsOf(app, e)[0]
+  return f?.sections.length ? f.sections : [{ fields: e.fields.map((x) => x.key) }]
+}
 
 const dataPath = (app: string, entity: string) => `/runtime/data/${app}/${entity}`
 

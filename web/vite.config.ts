@@ -36,6 +36,8 @@ export default defineConfig({
     emptyOutDir: true,
     // Monaco (the Development editor) is one ~4 MB chunk, loaded only there.
     chunkSizeWarningLimit: 4500,
+    // The platform, and a draft's preview in a tab of its own.
+    rollupOptions: { input: { main: r("index.html"), preview: r("preview.html") } },
   },
   test: { environment: "jsdom" },
 })

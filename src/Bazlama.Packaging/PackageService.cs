@@ -41,7 +41,7 @@ public sealed class PackageService(
         var build = await builds.ActiveBuildAsync(appKey, ct);
         var hasCode = await db.AppCodeFiles.AnyAsync(f => f.AppKey == appKey, ct);
         if (hasCode && (build is null || build.Value.AppVersion != row.Version))
-            return (null, null, "Uygulamanın kodu bu versiyon için derlenmemiş: önce Geliştirme'de derleyin.");
+            return (null, null, $"Uygulamanın kodu yayındaki versiyon ({row.Version}) için derlenmemiş; paket çalışan kodu taşımalı. Kod bu versiyonla derleniyorsa Geliştirme'de Derle'ye basın; taslağa göre yazıldıysa önce yeni versiyonu yayınlayın (yayınlama kodu da derler).");
 
         var libraries = new List<LibrarySource>();
         foreach (var l in build?.Libraries ?? [])

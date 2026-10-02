@@ -68,6 +68,18 @@ public class CodeLibraryVersion : Entity
 }
 
 /// <summary>The app definition being designed (Development). Publishing installs it as a new version.</summary>
+/// <summary>
+/// An app's preview: its draft installed under a key of its own (tables app_&lt;key&gt;_pv_…), to try it
+/// with real data and code before publishing. The definition is the one the preview tables have.
+/// </summary>
+public class AppPreview : Entity
+{
+    public required string AppKey { get; set; }
+    public required string Definition { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public Guid? UpdatedBy { get; set; }
+}
+
 public class AppDraft : Entity
 {
     public required string AppKey { get; set; }

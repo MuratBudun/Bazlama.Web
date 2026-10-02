@@ -1,5 +1,5 @@
-import { computed, html, signal, type Signal } from "@bazlama/core"
-import { dialogs, icon, toast, type Sort } from "@bazlama/headless"
+import { computed, html, signal, untrack, type Signal } from "@bazlama/core"
+import { collectIds, dialogs, icon, toast, type Sort, type TreeItem } from "@bazlama/headless"
 import { definePage, type PageContext } from "@bazlama/router"
 import { ApiError, errorText } from "../api"
 import { PAGINATION_TR } from "../labels"
@@ -9,16 +9,19 @@ import {
   childrenOf,
   entityOf,
   formSections,
+  listColumns,
+  listOf,
   plural,
   records,
-  runtimeApp,
   runtimeApps,
+  runtimeConfig,
   titleField,
   type AppDef,
   type DataRecord,
   type EntityDef,
   type FieldDef,
   type RuntimeApp,
+  type RuntimeMenuItem,
 } from "./api"
 import { fieldEditor, gridColumns } from "./fields"
 
@@ -43,7 +46,7 @@ export const runtimeHome = definePage({
         ? html`<p class="muted">Kullanabileceğiniz bir uygulama yok. Uygulamalar Yönetim › Uygulamalar'dan kurulur; erişim grup izinleriyle verilir.</p>`
         : html`<div class="cards">
             ${runtimeApps().map(
-              (a) => html`<a class="card-link" href=${ctx.router.href(`/runtime/${a.key}`)}>
+              (a) => html`<a class="card-link" href=${ctx.router.href(`${runtimeConfig.base}/${a.key}`)}>
                 ${icon(a.icon ?? "layers", { size: 22 })}<strong>${a.name}</strong>
                 <span class="muted small">${a.description ?? ""}</span>
                 <span class="muted small">${a.entities.map((e) => e.plural).join(" · ")}</span>
@@ -57,40 +60,58 @@ export const runtimeHome = definePage({
 function withApp(ctx: PageContext, body: (app: RuntimeApp) => unknown) {
   const app = signal<RuntimeApp | null>(null)
   const error = signal("")
-  runtimeApp(ctx.params().app).then(app.set, (e) => error.set(e instanceof ApiError && e.status === 404 ? "Uygulama bulunamadı ya da erişim yetkiniz yok." : errorText(e)))
+  runtimeConfig.load(ctx.params().app).then(app.set, (e) => error.set(e instanceof ApiError && e.status === 404 ? "Uygulama bulunamadı ya da erişim yetkiniz yok." : errorText(e)))
   return html`<div class="page">${loading({ data: app, error }, () => body(app()!))}</div>`
 }
 
 export const appPage = definePage({
   title: "Uygulama",
   setup: (ctx) =>
-    withApp(ctx, ({ definition: app, access }) => html`
-      <div class="page-head">${icon(app.icon ?? "layers", { size: 22 })}<h1>${app.name}</h1><span class="muted small">v${app.version}</span></div>
-      ${app.description ? html`<p class="muted">${app.description}</p>` : null}
-      <div class="cards">
-        ${app.entities
-          .filter((e) => !e.parent && access[e.key]?.canRead)
-          .map(
-            (e) => html`<a class="card-link" href=${ctx.router.href(`/runtime/${app.key}/${e.key}`)}>
-              ${icon(e.icon ?? "list", { size: 22 })}<strong>${plural(e)}</strong>
-              <span class="muted small">${scopeText[e.scope]}${e.periodBound ? " · döneme bağlı" : ""}</span>
-            </a>`,
-          )}
-      </div>`),
+    withApp(ctx, ({ definition: app }) => {
+      const items = menuLeaves(runtimeApps().find((a) => a.key === app.key)?.menu ?? [])
+      return html`
+        <div class="page-head">${icon(app.icon ?? "layers", { size: 22 })}<h1>${app.name}</h1><span class="muted small">v${app.version}</span></div>
+        ${app.description ? html`<p class="muted">${app.description}</p>` : null}
+        <div class="cards">
+          ${items.map((m) => {
+            const e = entityOf(app, m.entity ?? "")
+            return html`<a class="card-link" href=${ctx.router.href(menuHref(app.key, m))}>
+              ${icon(m.icon ?? e?.icon ?? (m.form ? "plus" : "list"), { size: 22 })}<strong>${m.label}</strong>
+              <span class="muted small">${e ? `${scopeText[e.scope]}${e.periodBound ? " · döneme bağlı" : ""}` : ""}</span>
+            </a>`
+          })}
+        </div>`
+    }),
 })
+
+/** The leaves of a menu (items that open something), in order. */
+const menuLeaves = (items: RuntimeMenuItem[]): RuntimeMenuItem[] => items.flatMap((m) => (m.items ? menuLeaves(m.items) : [m]))
+/** Where a menu item goes: its list, or a new record in its form. */
+export const menuHref = (app: string, m: RuntimeMenuItem) =>
+  m.form ? `${runtimeConfig.base}/${app}/${m.entity}/new?form=${m.form}` : `${runtimeConfig.base}/${app}/${m.entity}${m.list ? `?list=${m.list}` : ""}`
 
 export const listPage = definePage({
   title: "Liste",
   setup(ctx) {
-    const PAGE = 50
     return withApp(ctx, ({ definition: app, access }) => {
       const e = entityOf(app, ctx.params().entity)
       if (!e || e.parent) return html`<bz-alert variant="danger">Liste bulunamadı.</bz-alert>`
-      document.title = `${plural(e)} · ${app.name} · Bazlama`
-      const canWrite = access[e.key]?.canWrite ?? false
+      // Two lists of an entity share the path; switching between them changes only ?list.
+      return html`${() => {
+        const key = ctx.query.get("list")
+        return untrack(() => listBody(ctx, app, e, access[e.key]?.canWrite ?? false, key))
+      }}`
+    })
+  },
+})
+
+function listBody(ctx: PageContext, app: AppDef, e: EntityDef, canWrite: boolean, listKey: string | null) {
+      const PAGE = 50
+      const l = listOf(app, e, listKey)
+      document.title = `${l.name} · ${app.name} · Bazlama`
 
       const search = signal("")
-      const sort = signal<Sort>(e.list?.sortField ? { key: e.list.sortField, dir: e.list.sortDescending ? "desc" : "asc" } : null)
+      const sort = signal<Sort>(l.sortField ? { key: l.sortField, dir: l.sortDescending ? "desc" : "asc" } : null)
       const page = signal(1)
       const rows = signal<DataRecord[]>([])
       const total = signal(0)
@@ -112,18 +133,18 @@ export const listPage = definePage({
       }
       void load()
       let timer: ReturnType<typeof setTimeout> | undefined
-      const open = (id: string) => void ctx.navigate(`/runtime/${app.key}/${e.key}/${id}`)
-      const gridId = `grid-${app.key}-${e.key}`
+      const open = (id: string) => void ctx.navigate({ path: `${runtimeConfig.base}/${app.key}/${e.key}/${id}`, query: { list: l.key, form: l.form } })
+      const gridId = `grid-${app.key}-${e.key}-${l.key ?? ""}`
 
       return html`
         <div class="page-head">
-          ${icon(e.icon ?? "list", { size: 22 })}<h1>${plural(e)}</h1>
+          ${icon(e.icon ?? "list", { size: 22 })}<h1>${l.name}</h1>
           <bz-badge variant="neutral" .count=${total}></bz-badge>
           <span class="muted small">${scopeText[e.scope]}${e.scope === "global" ? "" : () => ` · ${contextText()}`}</span>
           <span class="spacer"></span>
           ${canWrite ? html`<bz-button variant="primary" @click=${() => open("new")}>${icon("plus")} Yeni ${e.name.toLocaleLowerCase("tr-TR")}</bz-button>` : null}
         </div>
-        <bz-toolbar label=${`${plural(e)} listesi`}>
+        <bz-toolbar label=${`${l.name} listesi`}>
           <bz-input placeholder="Ara…" aria-label="Ara" .value=${search} @input=${(ev: Event) => {
             search.set((ev.currentTarget as HTMLInputElement).value)
             clearTimeout(timer)
@@ -135,10 +156,10 @@ export const listPage = definePage({
         ${() => (error() ? html`<bz-alert variant="danger">${error()}</bz-alert>` : null)}
         ${dataGrid({
           id: gridId,
-          label: plural(e),
-          persist: `rt-${app.key}-${e.key}`,
+          label: l.name,
+          persist: `rt-${app.key}-${e.key}${l.key ? `-${l.key}` : ""}`,
           fill: true,
-          columns: gridColumns(e),
+          columns: gridColumns(e, l.columns),
           rows,
           loading: busy,
           sort: { value: sort, change: (s) => (sort.set(s), page.set(1), void load()) },
@@ -147,9 +168,7 @@ export const listPage = definePage({
         })}
         <bz-pagination show-info .labels=${PAGINATION_TR} .page=${page} .total=${total} page-size=${PAGE}
           @change=${(ev: CustomEvent<{ page: number }>) => (page.set(ev.detail.page), void load())}></bz-pagination>`
-    })
-  },
-})
+}
 
 /** Field signals of a form, filled from a record. */
 function formState(e: EntityDef, record: DataRecord | null) {
@@ -161,7 +180,7 @@ function formState(e: EntityDef, record: DataRecord | null) {
   return { values, titles, errors, snapshot, dirty: () => JSON.stringify(snapshot()) !== initial }
 }
 
-function formFields(app: AppDef, e: EntityDef, state: ReturnType<typeof formState>, readonly: boolean, sections = formSections(e)) {
+function formFields(app: AppDef, e: EntityDef, state: ReturnType<typeof formState>, readonly: boolean, sections = formSections(app, e)) {
   const field = (key: string) => e.fields.find((f) => f.key === key)
   return sections.map(
     (s) => html`<bz-form-layout columns=${s.columns ?? 2} min-column-width="14rem">
@@ -183,7 +202,11 @@ export const recordPage = definePage({
       const id = ctx.params().id
       const isNew = id === "new"
       const canWrite = access[e.key]?.canWrite ?? false
-      const listPath = `/runtime/${app.key}/${e.key}`
+      // The list it was opened from (back goes there) and the form it is shown in.
+      const listKey = ctx.query.get("list")
+      const formKey = ctx.query.get("form")
+      const listPath = { path: `${runtimeConfig.base}/${app.key}/${e.key}`, query: { list: listKey } }
+      const sections = formSections(app, e, formKey)
 
       const record = signal<DataRecord | null>(null)
       const error = signal("")
@@ -214,7 +237,7 @@ export const recordPage = definePage({
               const res = await records.create(app.key, e.key, state.snapshot())
               saved = true
               toast.success(`${e.name} kaydedildi.`)
-              void ctx.navigate(`${listPath}/${res.id}`, { replace: true })
+              void ctx.navigate({ path: `${listPath.path}/${res.id}`, query: { list: listKey, form: formKey } }, { replace: true })
             } else {
               await records.update(app.key, e.key, id, state.snapshot(), r!.rowVersion)
               saved = true
@@ -264,7 +287,7 @@ export const recordPage = definePage({
           ${canWrite ? null : html`<bz-alert variant="info">Bu kaydı yalnız görüntüleyebilirsiniz.</bz-alert>`}
           <form class="stack record-form" @submit=${save} novalidate>
             ${() => (banner() ? html`<bz-alert variant="danger">${banner()}</bz-alert>` : null)}
-            ${formFields(app, e, state, !canWrite)}
+            ${formFields(app, e, state, !canWrite, sections)}
             ${canWrite ? html`<div class="row"><bz-button type="submit" variant="primary" ?loading=${busy}>${isNew ? "Oluştur" : "Kaydet"}</bz-button>
               <bz-button @click=${() => void ctx.navigate(listPath)}>Vazgeç</bz-button></div>` : null}
           </form>
@@ -326,7 +349,7 @@ function detailSection(app: AppDef, e: EntityDef, parentId: string, canWrite: bo
   const remove = (r: DataRecord) =>
     confirmAction({ heading: `${e.name} sil`, message: "Bu satır silinsin mi?", confirmText: "Sil", danger: true, action: () => records.delete(app.key, e.key, r.id).then(load) })
 
-  const columns = gridColumns(e)
+  const columns = gridColumns(e, listColumns(app, e))
   if (canWrite)
     columns.push({
       key: "_remove",
@@ -348,12 +371,22 @@ function detailSection(app: AppDef, e: EntityDef, parentId: string, canWrite: bo
 }
 
 /** Menu items: apps → their master entities. */
+/**
+ * The apps in the platform menu, each with its own menu. Item ids are where they go (with the
+ * list or form in the query), so the shell can mark the current one.
+ */
 export const runtimeNav = (href: (path: string) => string) =>
   computed(() =>
-    runtimeApps().map((a) => ({
-      id: `/runtime/${a.key}`,
-      label: a.name,
-      icon: a.icon ?? "layers",
-      children: a.entities.map((e) => ({ id: `/runtime/${a.key}/${e.key}`, label: e.plural, icon: e.icon ?? "list", href: href(`/runtime/${a.key}/${e.key}`) })),
-    })),
+    runtimeApps().map((a): TreeItem => {
+      const items = (list: RuntimeMenuItem[], at: string): TreeItem[] =>
+        list.map((m, i) =>
+          m.items
+            ? { id: `${runtimeConfig.base}/${a.key}#${at}${i}`, label: m.label, icon: m.icon ?? "folder", children: items(m.items, `${at}${i}.`) }
+            : { id: menuHref(a.key, m), label: m.label, icon: m.icon ?? (m.form ? "plus" : "list"), href: href(menuHref(a.key, m)) },
+        )
+      return { id: `${runtimeConfig.base}/${a.key}`, label: a.name, icon: a.icon ?? "layers", children: items(a.menu, "") }
+    }),
   )
+
+/** Every group of the apps' menus (they stay open). */
+export const runtimeGroups = (nav: () => TreeItem[]) => collectIds(nav())

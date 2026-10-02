@@ -43,6 +43,7 @@ public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbCont
     public DbSet<CodeLibraryFile> CodeLibraryFiles => Set<CodeLibraryFile>();
     public DbSet<CodeLibraryVersion> CodeLibraryVersions => Set<CodeLibraryVersion>();
     public DbSet<AppDraft> AppDrafts => Set<AppDraft>();
+    public DbSet<AppPreview> AppPreviews => Set<AppPreview>();
 
     /// <summary>Data Protection keys (TOTP secrets, cookies): in the database, so every node and restart shares them.</summary>
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
@@ -235,6 +236,13 @@ public class KernelDbContext(DbContextOptions<KernelDbContext> options) : DbCont
         model.Entity<AppDraft>(e =>
         {
             e.ToTable("sys_app_drafts");
+            e.Property(x => x.AppKey).HasMaxLength(Code);
+            e.HasIndex(x => x.AppKey).IsUnique();
+        });
+
+        model.Entity<AppPreview>(e =>
+        {
+            e.ToTable("sys_app_previews");
             e.Property(x => x.AppKey).HasMaxLength(Code);
             e.HasIndex(x => x.AppKey).IsUnique();
         });

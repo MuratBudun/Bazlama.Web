@@ -12,10 +12,14 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Bazlama.Engine;
 
-/// <summary>Installed app definitions, cached until an install changes them.</summary>
+/// <summary>
+/// Installed app definitions, cached until an install changes them. Previews of drafts are found
+/// by key too (<see cref="GetAsync"/>), but they are not apps: <see cref="AllAsync"/> leaves them out.
+/// </summary>
 public sealed class AppRegistry(KernelDbContext db, IMemoryCache cache)
 {
     const string CacheKey = "apps";
+    const string PreviewsKey = "app-previews";
 
     public async Task<IReadOnlyDictionary<string, AppDefinition>> AllAsync(CancellationToken ct = default)
     {
@@ -26,10 +30,22 @@ public sealed class AppRegistry(KernelDbContext db, IMemoryCache cache)
         return apps;
     }
 
+    /// <summary>An installed app, or a preview (by its preview key).</summary>
     public async Task<AppDefinition?> GetAsync(string key, CancellationToken ct = default) =>
-        (await AllAsync(ct)).GetValueOrDefault(key);
+        (await AllAsync(ct)).GetValueOrDefault(key) ?? (key.EndsWith(AppDefinition.PreviewSuffix, StringComparison.Ordinal) ? (await PreviewsAsync(ct)).GetValueOrDefault(key) : null);
+
+    /// <summary>Previews by their preview key.</summary>
+    public async Task<IReadOnlyDictionary<string, AppDefinition>> PreviewsAsync(CancellationToken ct = default)
+    {
+        if (cache.TryGetValue(PreviewsKey, out IReadOnlyDictionary<string, AppDefinition>? previews)) return previews!;
+        var rows = await db.AppPreviews.AsNoTracking().Select(p => p.Definition).ToListAsync(ct);
+        previews = rows.Select(json => AppDefinition.Parse(json).AsPreview()).ToDictionary(a => a.Key);
+        cache.Set(PreviewsKey, previews, TimeSpan.FromMinutes(10));
+        return previews;
+    }
 
     public void Invalidate() => cache.Remove(CacheKey);
+    public void InvalidatePreviews() => cache.Remove(PreviewsKey);
 }
 
 /// <summary>Planned changes of an install. <see cref="Errors"/> block it; destructive changes need a confirmation.</summary>
@@ -126,6 +142,30 @@ public sealed class AppInstaller(KernelDbContext db, SqlDialect dialect, AppRegi
         }
         foreach (var listener in listeners) await listener.AppInstalledAsync(next, ct);
         return new(true, plan);
+    }
+
+    /// <summary>
+    /// Runs schema changes in one transaction (the provider's before/after migration statements
+    /// around it) and, in that transaction, <paramref name="record"/> (e.g. a row that remembers
+    /// the definition the tables now have).
+    /// </summary>
+    public async Task ApplySchemaAsync(IReadOnlyList<SchemaChange> changes, Func<Task> record, CancellationToken ct)
+    {
+        await db.Database.OpenConnectionAsync(ct);
+        try
+        {
+            await ExecuteAsync(dialect.BeforeMigration, null, ct);
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            await ExecuteAsync(dialect.Statements(changes), tx, ct);
+            await record();
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+        }
+        finally
+        {
+            await ExecuteAsync(dialect.AfterMigration, null, CancellationToken.None);
+            await db.Database.CloseConnectionAsync();
+        }
     }
 
     async Task ExecuteAsync(IEnumerable<string> statements, IDbContextTransaction? tx, CancellationToken ct)

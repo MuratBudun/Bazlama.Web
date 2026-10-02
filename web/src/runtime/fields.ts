@@ -44,8 +44,8 @@ export function formatValue(f: FieldDef, value: unknown, record: DataRecord): un
   }
 }
 
-/** Grid columns for an entity's list (or the given fields). */
-export function gridColumns(e: EntityDef, keys = listColumns(e)): GridColumn<DataRecord>[] {
+/** Grid columns of the given fields of an entity (a list's columns). */
+export function gridColumns(e: EntityDef, keys: string[]): GridColumn<DataRecord>[] {
   return keys
     .map((k) => e.fields.find((f) => f.key === k))
     .filter((f): f is FieldDef => !!f)
@@ -178,7 +178,7 @@ async function pickRecord(app: AppDef, e: EntityDef) {
       ${() => (error() ? html`<bz-alert variant="danger">${error()}</bz-alert>` : null)}
       ${dataGrid({
         label: plural(e),
-        columns: gridColumns(e),
+        columns: gridColumns(e, listColumns(app, e)),
         rows,
         onOpen: (r) => void ref.close({ value: r.id, text: String(r[title] ?? "") }),
         empty: "Sonuç yok.",

@@ -220,7 +220,7 @@ public sealed class AppCodeTests : IAsyncLifetime
         v3["version"] = "1.2.0";
         var siparis = v3["entities"]!.AsArray()[2]!.AsObject();
         siparis["fields"]!.AsArray().RemoveAt(5);
-        siparis["form"] = null;
+        Samples.Unuse(v3, "siparis", "aciklama");
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/management/apps/install", new { definition = v3, confirmDestructive = true }, Ct)).StatusCode);
         app = (await (await admin.GetAsync("/api/development/apps", Ct)).JsonAsync()).EnumerateArray().Single();
         Assert.True(app.GetProperty("stale").GetBoolean());

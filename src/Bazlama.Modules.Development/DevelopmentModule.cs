@@ -24,6 +24,7 @@ public sealed record BuildInfo(int Number, string AppVersion, string Hash, DateT
 public sealed record DevApp(string Key, string Name, string? Version, int FileCount, BuildInfo? ActiveBuild, bool Loaded, bool Stale, bool Installed, bool HasDraft);
 public sealed record AppCreate(string Key, string Name, string? Description);
 public sealed record PublishRequest(string Version, bool ConfirmDestructive);
+public sealed record PreviewRequest(bool Reset);
 
 /// <summary>/api/development: app code workspaces, compiling, code libraries.</summary>
 public static partial class DevelopmentModule
@@ -78,6 +79,9 @@ public static partial class DevelopmentModule
                 Description = draft.Description,
                 Icon = draft.Icon,
                 Entities = draft.Entities,
+                Forms = draft.Forms,
+                Lists = draft.Lists,
+                Menu = draft.Menu,
             }, null);
         }
         catch (JsonException e)
@@ -206,7 +210,8 @@ public static partial class DevelopmentModule
             var installed = await registry.GetAsync(app, ct);
             var draft = await db.AppDrafts.AsNoTracking().FirstOrDefaultAsync(d => d.AppKey == app, ct);
             if (draft is null && installed is null) return Results.NotFound();
-            var json = draft?.Definition ?? installed!.ToJson();
+            // An older draft keeps forms inside its entities: the designers get today's shape.
+            var json = AppDefinition.Upgrade(draft?.Definition ?? installed!.ToJson());
             return Results.Ok(new
             {
                 definition = JsonDocument.Parse(json).RootElement,
@@ -274,6 +279,26 @@ public static partial class DevelopmentModule
             var result = await builds.BuildAsync(app, ct);
             return result.Success ? Results.Ok(result) : Results.Json(result, statusCode: StatusCodes.Status400BadRequest);
         });
+
+        // ── Preview: the saved draft and code, installed under the app's preview key ──
+
+        app.MapPost("/preview", async (string app, PreviewRequest? r, PreviewService previews, CancellationToken ct) =>
+        {
+            var result = await previews.PrepareAsync(app, r?.Reset ?? false, ct);
+            if (result is null) return Results.NotFound();
+            var body = new
+            {
+                result.Key,
+                result.Changes,
+                result.Reset,
+                code = result.Code is null ? null : new { result.Code.Success, diagnostics = result.Code.Diagnostics.Where(d => d.Severity == "error") },
+                errors = result.Errors,
+            };
+            return result.Ready ? Results.Ok(body) : Results.Json(body, statusCode: StatusCodes.Status400BadRequest);
+        });
+
+        app.MapDelete("/preview", async (string app, PreviewService previews, CancellationToken ct) =>
+            await previews.RemoveAsync(app, ct) ? Results.NoContent() : Results.NotFound());
 
         // ── Libraries ──────────────────────────────────────────────────────
 

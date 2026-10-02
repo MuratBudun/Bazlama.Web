@@ -59,6 +59,13 @@ public sealed class AppEngineTests : IAsyncLifetime
         var app = apps.EnumerateArray().Single();
         Assert.Equal("siparis", app.GetProperty("key").GetString());
         Assert.Equal(["musteri", "urun", "siparis"], app.GetProperty("entities").EnumerateArray().Select(e => e.GetProperty("key").GetString()));
+        // The app's menu: a group with lists and a new-record form, and a list.
+        var menu = app.GetProperty("menu");
+        Assert.Equal(["Satış", "Ürünler"], menu.EnumerateArray().Select(m => m.GetProperty("label").GetString()));
+        var sales = menu[0].GetProperty("items");
+        Assert.Equal(["Siparişler", "Yeni sipariş", "Son siparişler", "Müşteriler"], sales.EnumerateArray().Select(m => m.GetProperty("label").GetString()));
+        Assert.Equal(("siparis", "siparis"), (sales[1].GetProperty("entity").GetString(), sales[1].GetProperty("form").GetString()));
+        Assert.Equal(("urun", "urun"), (menu[1].GetProperty("entity").GetString(), menu[1].GetProperty("list").GetString()));
 
         var plan = await (await admin.PostAsJsonAsync("/api/management/apps/plan", Samples.Node("siparis"), Ct)).JsonAsync();
         Assert.Contains("Yeni versiyon kurulu versiyondan (1.0.0) büyük olmalı.", plan.GetProperty("errors").EnumerateArray().Select(e => e.GetString()));
@@ -179,6 +186,10 @@ public sealed class AppEngineTests : IAsyncLifetime
         await ali.LoginAsync("ali", "Kullanici2026x");
         var apps = await (await ali.GetAsync("/api/runtime/apps", Ct)).JsonAsync();
         Assert.Equal(["siparis"], apps[0].GetProperty("entities").EnumerateArray().Select(e => e.GetProperty("key").GetString()));
+        // Only the menu items of readable entities; the group stays because it is not empty.
+        var menu = apps[0].GetProperty("menu");
+        Assert.Equal("Satış", menu.EnumerateArray().Single().GetProperty("label").GetString());
+        Assert.Equal(["Siparişler", "Yeni sipariş", "Son siparişler"], menu[0].GetProperty("items").EnumerateArray().Select(m => m.GetProperty("label").GetString()));
 
         var orders = await List(ali, "siparis");
         Assert.Equal(1, orders.GetProperty("total").GetInt32());
@@ -197,7 +208,7 @@ public sealed class AppEngineTests : IAsyncLifetime
         var siparis = v2["entities"]!.AsArray()[2]!.AsObject();
         var fields = siparis["fields"]!.AsArray();
         fields.RemoveAt(5); // aciklama
-        siparis["form"] = null;
+        Samples.Unuse(v2, "siparis", "aciklama");
         fields.Add(new JsonObject { ["key"] = "oncelik", ["label"] = "Öncelik", ["type"] = "integer" });
 
         var plan = await (await admin.PostAsJsonAsync("/api/management/apps/plan", v2, Ct)).JsonAsync();

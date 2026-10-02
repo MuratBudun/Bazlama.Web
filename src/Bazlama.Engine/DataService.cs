@@ -39,13 +39,18 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
     public static string ReadPermission(AppDefinition app, EntityDefinition root) => $"app.{app.Key}.{root.Key}.read";
     public static string WritePermission(AppDefinition app, EntityDefinition root) => $"app.{app.Key}.{root.Key}.write";
 
+    /// <remarks>A preview's records are for its developers: development access reads and writes them.</remarks>
     public bool CanRead(AppDefinition app, EntityDefinition entity)
     {
+        if (app.PreviewOf is not null) return ctx.HasPermission(Kernel.Identity.Permissions.Development);
         var root = MetadataValidator.Root(app, entity);
         return ctx.HasPermission(ReadPermission(app, root)) || ctx.HasPermission(WritePermission(app, root));
     }
 
-    public bool CanWrite(AppDefinition app, EntityDefinition entity) => ctx.HasPermission(WritePermission(app, MetadataValidator.Root(app, entity)));
+    public bool CanWrite(AppDefinition app, EntityDefinition entity) =>
+        app.PreviewOf is not null
+            ? ctx.HasPermission(Kernel.Identity.Permissions.Development)
+            : ctx.HasPermission(WritePermission(app, MetadataValidator.Root(app, entity)));
 
     async Task<Target?> ResolveAsync(string appKey, string entityKey, CancellationToken ct)
     {
@@ -95,8 +100,9 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
             await using var select = Command();
             foreach (DbParameter p in count.Parameters) d.Parameter(select, p.ParameterName, Original(p));
             var (columns, joins) = SelectList(t);
-            var sort = query.Sort ?? t.Entity.List?.SortField;
-            var descending = query.Sort is null ? t.Entity.List?.SortDescending ?? (sort is null) : query.Descending;
+            var list = t.App.DefaultList(t.Entity);
+            var sort = query.Sort ?? list?.SortField;
+            var descending = query.Sort is null ? list?.SortDescending ?? (sort is null) : query.Descending;
             var sortColumn = sort is not null && (t.Entity.Field(sort) is not null || sort is "created_at" or "updated_at") ? sort : "created_at";
             d.Parameter(select, "@skip", Math.Max(0, query.Skip));
             d.Parameter(select, "@take", Math.Clamp(query.Take, 1, 500));

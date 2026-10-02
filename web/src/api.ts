@@ -50,6 +50,29 @@ export const api = {
   upload: <T>(path: string, file: Blob) => request<T>("POST", path, file),
 }
 
+/**
+ * Downloads a file the server makes (e.g. a .bzapp package). A plain <a download> link fails
+ * silently when the server refuses (the error JSON is lost); this throws an ApiError with the
+ * server's message instead. The file name comes from Content-Disposition.
+ */
+export async function downloadFile(path: string, fallbackName: string) {
+  const res = await fetch(`/api${path}`, { headers: { Accept: "application/octet-stream, application/json" } })
+  if (!res.ok) {
+    if (res.status === 401) window.dispatchEvent(new Event(SESSION_LOST))
+    const data: unknown = res.headers.get("Content-Type")?.includes("json") ? await res.json() : null
+    const errors = (data as { errors?: string[] } | null)?.errors
+    throw new ApiError(res.status, errors?.length ? errors : [statusText(res.status)], {}, data)
+  }
+  const disposition = res.headers.get("Content-Disposition") ?? ""
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1]
+  const name = encoded ? decodeURIComponent(encoded) : (/filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? fallbackName)
+  const a = document.createElement("a")
+  a.href = URL.createObjectURL(await res.blob())
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+
 let info: Promise<SystemInfo> | null = null
 /** /api/system/info, fetched once (the environment does not change while running). */
 export const systemInfo = () => (info ??= api.get<SystemInfo>("/system/info").catch((e: unknown) => ((info = null), Promise.reject(e))))

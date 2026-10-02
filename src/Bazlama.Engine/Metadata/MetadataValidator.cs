@@ -23,6 +23,7 @@ public static partial class MetadataValidator
         var e = new List<string>();
         // Table names are app_<app>_<entity>: PostgreSQL allows 63 characters.
         if (!Identifier().IsMatch(app.Key ?? "") || app.Key!.Length > 20) e.Add($"App anahtarı geçersiz: '{app.Key}' (küçük harf, rakam ve _; harfle başlar; en fazla 20 karakter).");
+        else if (app.PreviewOf is null && app.Key.EndsWith(AppDefinition.PreviewSuffix, StringComparison.Ordinal)) e.Add($"App anahtarı '{AppDefinition.PreviewSuffix}' ile bitemez (önizleme için ayrılmış).");
         if (string.IsNullOrWhiteSpace(app.Name)) e.Add("App adı gerekli.");
         if (!SemVer().IsMatch(app.Version ?? "")) e.Add($"Versiyon geçersiz: '{app.Version}' (örn. 1.0.0).");
         if (app.Entities.Count == 0) e.Add("En az bir entity tanımlanmalı.");
@@ -77,15 +78,87 @@ public static partial class MetadataValidator
             }
 
             if (entity.TitleField is { } title && entity.Field(title) is null) e.Add($"{at}: başlık alanı bulunamadı: '{title}'.");
-            foreach (var c in entity.List?.Columns ?? [])
-                if (entity.Field(c) is null) e.Add($"{at}: listedeki alan bulunamadı: '{c}'.");
-            if (entity.List?.SortField is { } sort && entity.Field(sort) is null && sort is not ("created_at" or "updated_at"))
-                e.Add($"{at}: sıralama alanı bulunamadı: '{sort}'.");
-            foreach (var s in entity.Form?.Sections ?? [])
+        }
+
+        foreach (var dup in app.Forms.GroupBy(x => x.Key).Where(g => g.Count() > 1))
+            e.Add($"Form anahtarı birden fazla kez kullanılmış: '{dup.Key}'.");
+        foreach (var form in app.Forms)
+        {
+            var at = $"Form '{form.Key}'";
+            if (!Identifier().IsMatch(form.Key ?? "")) e.Add($"{at}: anahtar geçersiz.");
+            if (string.IsNullOrWhiteSpace(form.Name)) e.Add($"{at}: ad gerekli.");
+            var entity = app.Entity(form.Entity ?? "");
+            if (entity is null)
+            {
+                e.Add($"{at}: entity bulunamadı: '{form.Entity}'.");
+                continue;
+            }
+            if (form.Sections.Count == 0 || form.Sections.All(s => s.Fields.Count == 0)) e.Add($"{at}: en az bir alan içermeli.");
+            foreach (var s in form.Sections)
+            {
+                if (s.Columns is < 1 or > 3) e.Add($"{at}: bölüm sütun sayısı 1 ile 3 arasında olmalı.");
                 foreach (var f in s.Fields)
                     if (entity.Field(f) is null) e.Add($"{at}: formdaki alan bulunamadı: '{f}'.");
+            }
+            foreach (var dup in form.Sections.SelectMany(s => s.Fields).GroupBy(f => f).Where(g => g.Count() > 1))
+                e.Add($"{at}: alan formda birden fazla kez var: '{dup.Key}'.");
         }
+
+        foreach (var dup in app.Lists.GroupBy(x => x.Key).Where(g => g.Count() > 1))
+            e.Add($"Liste anahtarı birden fazla kez kullanılmış: '{dup.Key}'.");
+        foreach (var list in app.Lists)
+        {
+            var at = $"Liste '{list.Key}'";
+            if (!Identifier().IsMatch(list.Key ?? "")) e.Add($"{at}: anahtar geçersiz.");
+            if (string.IsNullOrWhiteSpace(list.Name)) e.Add($"{at}: ad gerekli.");
+            var entity = app.Entity(list.Entity ?? "");
+            if (entity is null)
+            {
+                e.Add($"{at}: entity bulunamadı: '{list.Entity}'.");
+                continue;
+            }
+            if (list.Columns.Count == 0) e.Add($"{at}: en az bir sütun içermeli.");
+            foreach (var c in list.Columns)
+                if (entity.Field(c) is null) e.Add($"{at}: listedeki alan bulunamadı: '{c}'.");
+            foreach (var dup in list.Columns.GroupBy(c => c).Where(g => g.Count() > 1))
+                e.Add($"{at}: sütun birden fazla kez var: '{dup.Key}'.");
+            if (list.SortField is { } sort && entity.Field(sort) is null && sort is not ("created_at" or "updated_at"))
+                e.Add($"{at}: sıralama alanı bulunamadı: '{sort}'.");
+            if (list.Form is { } form && app.Form(form) is not { } f) e.Add($"{at}: form bulunamadı: '{form}'.");
+            else if (list.Form is not null && app.Form(list.Form)!.Entity != list.Entity) e.Add($"{at}: form başka bir entity'nin: '{list.Form}'.");
+        }
+
+        ValidateMenu(app, app.Menu, 1, e);
         return e;
+    }
+
+    /// <summary>Menu depth: groups may hold groups, three levels at most.</summary>
+    public const int MenuDepth = 3;
+
+    static void ValidateMenu(AppDefinition app, IReadOnlyList<MenuItem> items, int depth, List<string> e)
+    {
+        foreach (var item in items)
+        {
+            var at = $"Menü '{item.Label}'";
+            if (string.IsNullOrWhiteSpace(item.Label)) e.Add("Menü: öğe adı gerekli.");
+            var targets = (item.Items is not null ? 1 : 0) + (item.List is not null ? 1 : 0) + (item.Form is not null ? 1 : 0);
+            if (targets != 1) e.Add($"{at}: bir grup (alt öğeler), bir liste ya da bir form olmalı.");
+            if (item.Items is { } children)
+            {
+                if (depth >= MenuDepth) e.Add($"{at}: menü en fazla {MenuDepth} seviye olabilir.");
+                else ValidateMenu(app, children, depth + 1, e);
+            }
+            if (item.List is { } listKey)
+            {
+                if (app.List(listKey) is not { } list) e.Add($"{at}: liste bulunamadı: '{listKey}'.");
+                else if (app.Entity(list.Entity)?.Parent is not null) e.Add($"{at}: detay entity'nin listesi menüde açılamaz ('{listKey}').");
+            }
+            if (item.Form is { } formKey)
+            {
+                if (app.Form(formKey) is not { } form) e.Add($"{at}: form bulunamadı: '{formKey}'.");
+                else if (app.Entity(form.Entity)?.Parent is not null) e.Add($"{at}: detay entity'nin formu menüde açılamaz ('{formKey}').");
+            }
+        }
     }
 
     static List<string> Ancestors(AppDefinition app, EntityDefinition entity)
@@ -116,11 +189,10 @@ public static class MetadataExtensions
     public static string? EffectiveTitleField(this EntityDefinition entity) =>
         entity.TitleField ?? entity.Fields.FirstOrDefault(f => f.Type == FieldType.Text)?.Key ?? entity.Fields.FirstOrDefault()?.Key;
 
-    public static IReadOnlyList<string> EffectiveListColumns(this EntityDefinition entity) =>
-        entity.List?.Columns is { Count: > 0 } c ? c : [.. entity.Fields.Where(f => f.Type != FieldType.LongText).Take(6).Select(f => f.Key)];
+    /// <summary>The entity's first list (the detail grids and default sorting use it), if it has one.</summary>
+    public static ListDefinition? DefaultList(this AppDefinition app, EntityDefinition entity) =>
+        app.Lists.FirstOrDefault(l => l.Entity == entity.Key);
 
-    public static IReadOnlyList<FormSection> EffectiveFormSections(this EntityDefinition entity) =>
-        entity.Form?.Sections is { Count: > 0 } s ? s : [new FormSection { Fields = [.. entity.Fields.Select(f => f.Key)] }];
 
     public static IEnumerable<EntityDefinition> Children(this AppDefinition app, EntityDefinition entity) =>
         app.Entities.Where(e => e.Parent == entity.Key);

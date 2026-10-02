@@ -93,7 +93,16 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
         if (missing.Count > 0) return new(false, null, null, [], missing);
 
         var output = AppCompiler.Compile(AppAssemblyName(appKey), Sources(app, files), refs);
-        if (!output.Success) return new(false, null, null, output.Diagnostics, ["Derleme hataları var."]);
+        if (!output.Success)
+        {
+            // The editor checks against the draft; code written for it may not fit the published version.
+            var editing = await EditingDefinitionAsync(appKey, ct);
+            if (editing is not null && editing.ToJson() != app.ToJson()
+                && AppCompiler.Compile(AppAssemblyName(appKey), Sources(editing, files), refs, emit: false).Success)
+                return new(false, null, null, output.Diagnostics,
+                    [$"Kod taslaktaki tanıma göre yazılmış; yayındaki v{app.Version} ile derlenmiyor. Derle yayındaki versiyonu derler: taslağı yayınlayın (yayınlama kodu yeni tanımla derleyip etkinleştirir) ya da denemek için Önizle'yi kullanın."]);
+            return new(false, null, null, output.Diagnostics, ["Derleme hataları var."]);
+        }
 
         var number = (await db.AppBuilds.Where(b => b.AppKey == appKey).MaxAsync(b => (int?)b.Number, ct) ?? 0) + 1;
         await db.AppBuilds.Where(b => b.AppKey == appKey && b.IsActive).ExecuteUpdateAsync(u => u.SetProperty(b => b.IsActive, false), ct);
@@ -114,6 +123,30 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
         host.Load(appKey, number, app.Version, output.Image!, output.Hash!, await LibraryImagesAsync(libraries, ct));
         log.LogInformation("App {App} build {Number} ({Hash}) is active", appKey, number, output.Hash);
         return new(true, number, output.Hash, output.Diagnostics, []);
+    }
+
+    /// <summary>
+    /// Compiles the saved workspace against a draft and loads it for the draft's preview. The
+    /// assembly is the app's own (same namespace and names), loaded under the preview key; nothing
+    /// is stored. A failed compile unloads the preview's code.
+    /// </summary>
+    public async Task<CompileOutput?> LoadPreviewAsync(AppDefinition draft, CancellationToken ct)
+    {
+        var previewKey = AppDefinition.PreviewKey(draft.Key);
+        var files = await FilesAsync(draft.Key, ct);
+        if (files.Count == 0)
+        {
+            host.Unload(previewKey);
+            return null;
+        }
+        var libraries = await LibrariesOfAsync(draft.Key, ct);
+        var (refs, missing) = await LibraryReferencesAsync(libraries, ct);
+        var output = missing.Count > 0
+            ? new CompileOutput(false, null, null, [.. missing.Select(m => Problem(m))])
+            : AppCompiler.Compile(AppAssemblyName(draft.Key), Sources(draft, files), refs);
+        if (output.Success) host.Load(previewKey, 0, "preview", output.Image!, output.Hash!, await LibraryImagesAsync(libraries, ct));
+        else host.Unload(previewKey);
+        return output;
     }
 
     /// <summary>
@@ -262,6 +295,7 @@ public static class CompilerModule
         services.AddScoped<IAppCode, CompiledAppCode>();
         services.AddScoped<CodeBuildService>();
         services.AddScoped<ActionRunner>();
+        services.AddScoped<PreviewService>();
         services.AddScoped<IAppInstallListener, RebuildOnInstall>();
         services.AddHostedService<AppCodeLoader>();
         return services;

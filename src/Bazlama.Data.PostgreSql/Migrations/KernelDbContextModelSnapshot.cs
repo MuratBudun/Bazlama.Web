@@ -267,6 +267,35 @@ namespace Bazlama.Data.PostgreSql.Migrations
                     b.ToTable("sys_app_drafts", (string)null);
                 });
 
+            modelBuilder.Entity("Bazlama.Kernel.Code.AppPreview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AppKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppKey")
+                        .IsUnique();
+
+                    b.ToTable("sys_app_previews", (string)null);
+                });
+
             modelBuilder.Entity("Bazlama.Kernel.Code.AppWorkspace", b =>
                 {
                     b.Property<Guid>("Id")

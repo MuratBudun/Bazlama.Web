@@ -2,6 +2,7 @@ using System.Text.Json;
 using Bazlama.Compiler;
 using Bazlama.Engine;
 using Bazlama.Engine.Metadata;
+using Bazlama.Kernel.Identity;
 using Bazlama.Modules.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -10,7 +11,9 @@ using Microsoft.AspNetCore.Routing;
 namespace Bazlama.Modules.Runtime;
 
 public sealed record RuntimeEntity(string Key, string Name, string Plural, string? Icon);
-public sealed record RuntimeApp(string Key, string Name, string Version, string? Description, string? Icon, IReadOnlyList<RuntimeEntity> Entities);
+/// <summary>A menu entry the user may open: a group, a list or a new record's form (with the entity behind it).</summary>
+public sealed record RuntimeMenuItem(string Label, string? Icon, string? Entity, string? List, string? Form, IReadOnlyList<RuntimeMenuItem>? Items);
+public sealed record RuntimeApp(string Key, string Name, string Version, string? Description, string? Icon, IReadOnlyList<RuntimeEntity> Entities, IReadOnlyList<RuntimeMenuItem> Menu);
 public sealed record EntityAccess(bool CanRead, bool CanWrite);
 public sealed record CreateRequest(JsonElement Values, Guid? ParentId);
 public sealed record UpdateRequest(JsonElement Values, int RowVersion);
@@ -22,12 +25,13 @@ public static class RuntimeModule
     {
         var api = endpoints.MapGroup("/api/runtime").RequireActiveSession();
 
-        // Apps with at least one master entity the user may read.
+        // Apps with something in their menu the user may open.
         api.MapGet("/apps", async (AppRegistry registry, DataService data, CancellationToken ct) =>
             (await registry.AllAsync(ct)).Values
                 .Select(app => new RuntimeApp(app.Key, app.Name, app.Version, app.Description, app.Icon,
-                    [.. app.Entities.Where(e => e.Parent is null && data.CanRead(app, e)).Select(e => new RuntimeEntity(e.Key, e.Name, e.DisplayPlural, e.Icon))]))
-                .Where(a => a.Entities.Count > 0)
+                    [.. app.Entities.Where(e => e.Parent is null && data.CanRead(app, e)).Select(e => new RuntimeEntity(e.Key, e.Name, e.DisplayPlural, e.Icon))],
+                    MenuOf(app, data)))
+                .Where(a => a.Menu.Count > 0)
                 .OrderBy(a => a.Name));
 
         // The definition the UI renders, with what the user may do per entity.
@@ -38,6 +42,22 @@ public static class RuntimeModule
             var access = def.Entities.ToDictionary(e => e.Key, e => new EntityAccess(data.CanRead(def, e), data.CanWrite(def, e)));
             return Results.Ok(new { definition = JsonSerializer.SerializeToElement(def, AppDefinition.Json), access, actions = actions.ActionsOf(app) });
         });
+
+        // A draft's preview (its developers only): what /apps/{app} gives, plus its menu.
+        api.MapGet("/previews/{key}", async (string key, AppRegistry registry, DataService data, ActionRunner actions, CancellationToken ct) =>
+        {
+            var def = await registry.GetAsync(key, ct);
+            if (def?.PreviewOf is null) return Results.NotFound();
+            var access = def.Entities.ToDictionary(e => e.Key, e => new EntityAccess(data.CanRead(def, e), data.CanWrite(def, e)));
+            return Results.Ok(new
+            {
+                definition = JsonSerializer.SerializeToElement(def, AppDefinition.Json),
+                access,
+                actions = actions.ActionsOf(key),
+                menu = MenuOf(def, data),
+                source = def.PreviewOf,
+            });
+        }).RequirePermission(Permissions.Development);
 
         var records = api.MapGroup("/data/{app}/{entity}");
 
@@ -72,6 +92,35 @@ public static class RuntimeModule
         });
 
         return endpoints;
+    }
+
+    /// <summary>
+    /// The app's menu as far as the user may read the entities behind it (empty groups go). An app
+    /// without a menu gets one item per master entity, opening its first list.
+    /// </summary>
+    public static IReadOnlyList<RuntimeMenuItem> MenuOf(AppDefinition app, DataService data)
+    {
+        if (app.Menu.Count == 0)
+            return [.. app.Entities.Where(e => e.Parent is null && data.CanRead(app, e))
+                .Select(e => new RuntimeMenuItem(e.DisplayPlural, e.Icon, e.Key, app.DefaultList(e)?.Key, null, null))];
+        List<RuntimeMenuItem> Visible(IReadOnlyList<MenuItem> items)
+        {
+            var result = new List<RuntimeMenuItem>();
+            foreach (var item in items)
+            {
+                if (item.Items is { } children)
+                {
+                    var inner = Visible(children);
+                    if (inner.Count > 0) result.Add(new RuntimeMenuItem(item.Label, item.Icon, null, null, null, inner));
+                    continue;
+                }
+                var entityKey = item.List is { } l ? app.List(l)?.Entity : item.Form is { } f ? app.Form(f)?.Entity : null;
+                if (entityKey is null || app.Entity(entityKey) is not { } entity || !data.CanRead(app, entity)) continue;
+                result.Add(new RuntimeMenuItem(item.Label, item.Icon, entityKey, item.List, item.Form, null));
+            }
+            return result;
+        }
+        return Visible(app.Menu);
     }
 
     static IResult Respond(DataResult r) => r.Status == DataStatus.Ok ? Results.Ok(new { id = r.Id }) : Fail(r);
