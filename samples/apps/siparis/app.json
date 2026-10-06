@@ -1,7 +1,7 @@
 {
   "key": "siparis",
   "name": "Sipariş Takibi",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Örnek app: müşteriler, ürünler, siparişler ve kalemleri; tutarlar, numaralar ve onay akışı C# koduyla.",
   "icon": "cart",
   "entities": [
@@ -98,6 +98,11 @@
       "sections": [
         { "title": "Genel", "fields": ["unvan", "vergi_no", "sehir", "segment", "aktif"] },
         { "title": "Notlar", "fields": ["notlar"], "columns": 1 }
+      ],
+      "tools": [
+        { "label": "Sipariş özeti", "icon": "chart", "method": "SiparisOzeti" },
+        { "label": "Sipariş sayısı (kütüphaneden)", "icon": "book", "method": "SiparisSayisi" },
+        { "label": "Kapsam seçimi (örnek)", "icon": "building", "method": "KapsamSec" }
       ]
     },
     {
@@ -107,6 +112,128 @@
       "sections": [
         { "title": "Sipariş", "fields": ["siparis_no", "musteri", "tarih", "teslim", "durum", "toplam"] },
         { "title": "Açıklama", "fields": ["aciklama"], "columns": 1 }
+      ],
+      "tools": [
+        { "label": "Teslim tarihini öner", "icon": "clock", "method": "TeslimOner" },
+        { "label": "Müşteri özeti", "icon": "chart", "method": "MusteriOzeti" },
+        { "label": "Not ekle", "icon": "edit", "method": "NotEkle" },
+        { "label": "Teslimatı planla", "icon": "send", "method": "TeslimatPlanla" },
+        { "label": "Müşteriyi değiştir", "icon": "users", "method": "MusteriDegistir" },
+        { "label": "Nedeniyle iptal et", "icon": "x", "method": "NedeniyleIptalEt" }
+      ]
+    }
+  ],
+  "modals": [
+    {
+      "key": "tarih_araligi",
+      "name": "Tarih aralığı",
+      "okText": "Göster",
+      "fields": [
+        { "key": "baslangic", "label": "Başlangıç", "type": "date", "required": true },
+        { "key": "bitis", "label": "Bitiş", "type": "date", "required": true },
+        { "key": "yalniz_onayli", "label": "Yalnız onaylı ve sevk edilmiş siparişler", "type": "boolean" }
+      ],
+      "sections": [
+        { "fields": ["baslangic", "bitis", { "field": "yalniz_onayli", "span": 2 }], "columns": 2 }
+      ]
+    },
+    {
+      "key": "siparis_notu",
+      "name": "Sipariş notu",
+      "okText": "Ekle",
+      "fields": [
+        {
+          "key": "tur",
+          "label": "Tür",
+          "type": "choice",
+          "required": true,
+          "choices": [
+            { "value": "bilgi", "label": "Bilgi" },
+            { "value": "uyari", "label": "Uyarı" },
+            { "value": "istek", "label": "Müşteri isteği" }
+          ]
+        },
+        { "key": "metin", "label": "Not", "type": "longText", "required": true },
+        { "key": "basa_ekle", "label": "Açıklamanın başına ekle", "type": "boolean", "hint": "İşaretli değilse sona eklenir." }
+      ],
+      "sections": [
+        { "fields": ["tur", "metin", "basa_ekle"], "columns": 1 }
+      ]
+    },
+    {
+      "key": "teslimat",
+      "name": "Teslimat planı",
+      "okText": "Planla ve kaydet",
+      "fields": [
+        { "key": "teslim", "label": "Teslim zamanı", "type": "dateTime", "required": true },
+        {
+          "key": "sekil",
+          "label": "Teslimat şekli",
+          "type": "choice",
+          "required": true,
+          "choices": [
+            { "value": "kargo", "label": "Kargo" },
+            { "value": "elden", "label": "Elden teslim" },
+            { "value": "depo", "label": "Depodan teslim" }
+          ]
+        },
+        { "key": "kargo_firmasi", "label": "Kargo firması", "type": "text", "maxLength": 100, "hint": "Kargo ile teslimde zorunlu." },
+        { "key": "acil", "label": "Acil teslimat", "type": "boolean" }
+      ],
+      "sections": [
+        { "fields": ["teslim", "sekil", "kargo_firmasi", "acil"], "columns": 2 }
+      ]
+    },
+    {
+      "key": "musteri_sec",
+      "name": "Müşteri seç",
+      "okText": "Aktar",
+      "fields": [
+        { "key": "musteri", "label": "Yeni müşteri", "type": "reference", "reference": "musteri", "required": true },
+        { "key": "neden", "label": "Neden", "type": "text", "hint": "Sipariş açıklamasına yazılır." }
+      ],
+      "sections": [
+        { "fields": ["musteri", "neden"], "columns": 1 }
+      ]
+    },
+    {
+      "key": "iptal_nedeni",
+      "name": "İptal nedeni",
+      "okText": "Siparişi iptal et",
+      "fields": [
+        {
+          "key": "neden",
+          "label": "Neden",
+          "type": "choice",
+          "required": true,
+          "choices": [
+            { "value": "musteri_vazgecti", "label": "Müşteri vazgeçti" },
+            { "value": "stok_yok", "label": "Stok yok" },
+            { "value": "fiyat", "label": "Fiyatta anlaşılamadı" },
+            { "value": "hatali_giris", "label": "Hatalı giriş" },
+            { "value": "diger", "label": "Diğer" }
+          ]
+        },
+        { "key": "aciklama", "label": "Açıklama", "type": "longText", "hint": "\"Diğer\" seçildiğinde zorunlu." }
+      ],
+      "sections": [
+        { "fields": ["neden", "aciklama"], "columns": 1 }
+      ]
+    },
+    {
+      "key": "kapsam",
+      "name": "Kapsam seçimi",
+      "fields": [
+        { "key": "firma", "label": "Firma", "type": "company", "required": true },
+        { "key": "lokasyon", "label": "Lokasyon", "type": "location", "hint": "Boşsa firmanın bütün lokasyonları." },
+        { "key": "plant", "label": "Plant", "type": "plant" },
+        { "key": "donem", "label": "Dönem", "type": "period" },
+        { "key": "baslangic", "label": "Başlangıç", "type": "date", "required": true },
+        { "key": "bitis", "label": "Bitiş", "type": "date", "required": true }
+      ],
+      "sections": [
+        { "title": "Kurum", "fields": ["firma", "lokasyon", "plant", "donem"], "columns": 2 },
+        { "title": "Tarih aralığı", "fields": ["baslangic", "bitis"], "columns": 2 }
       ]
     }
   ],

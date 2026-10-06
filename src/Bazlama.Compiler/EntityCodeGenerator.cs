@@ -5,8 +5,9 @@ using Bazlama.Engine.Metadata;
 namespace Bazlama.Compiler;
 
 /// <summary>
-/// C# classes for an app's entities (one per entity, a property per field), compiled together
-/// with the app's code so it is typed: <c>siparis.SiparisNo</c>, <c>siparis.Durum == Siparis.DurumValues.Taslak</c>.
+/// C# classes for an app's entities and modals (one per entity or modal, a property per field),
+/// compiled together with the app's code so it is typed: <c>siparis.SiparisNo</c>,
+/// <c>siparis.Durum == Siparis.DurumValues.Taslak</c>, <c>aralik.Baslangic</c>.
 /// </summary>
 public static class EntityCodeGenerator
 {
@@ -16,6 +17,7 @@ public static class EntityCodeGenerator
     public static string Namespace(AppDefinition app) => Pascal(app.Key) + "App";
 
     public static string ClassName(EntityDefinition e) => Pascal(e.Key);
+    public static string ClassName(ModalDefinition m) => Pascal(m.Key);
     public static string PropertyName(FieldDefinition f) => Pascal(f.Key);
 
     public static string Generate(AppDefinition app)
@@ -39,31 +41,56 @@ public static class EntityCodeGenerator
             sb.AppendLine($"[Entity(\"{e.Key}\")]");
             sb.AppendLine($"public partial class {ClassName(e)} : Record");
             sb.AppendLine("{");
-            foreach (var f in e.Fields)
-            {
-                sb.AppendLine($"    /// <summary>{Escape(f.Label)}{(f.Required ? " (required)" : "")}{(f.Type == FieldType.Reference ? $": id of a {ClassName(app.Entity(f.Reference!)!)}" : "")}.</summary>");
-                sb.AppendLine($"    [Field(\"{f.Key}\")] public {TypeOf(f)} {PropertyName(f)} {{ get; set; }}");
-            }
-            foreach (var f in e.Fields.Where(f => f.Type == FieldType.Choice))
-            {
-                sb.AppendLine();
-                sb.AppendLine($"    /// <summary>The values of {PropertyName(f)}.</summary>");
-                sb.AppendLine($"    public static class {PropertyName(f)}Values");
-                sb.AppendLine("    {");
-                var used = new HashSet<string>();
-                foreach (var c in f.Choices!)
-                {
-                    var name = Pascal(c.Value);
-                    if (name.Length == 0 || !char.IsLetter(name[0])) name = "V" + name;
-                    while (!used.Add(name)) name += "_";
-                    sb.AppendLine($"        /// <summary>{Escape(c.Label)}</summary>");
-                    sb.AppendLine($"        public const string {name} = \"{c.Value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\";");
-                }
-                sb.AppendLine("    }");
-            }
+            Members(sb, app, e.Fields);
+            sb.AppendLine("}");
+        }
+        foreach (var m in app.Modals)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"/// <summary>{Escape(m.Name)} (modal): what the user entered.</summary>");
+            sb.AppendLine($"[Modal(\"{m.Key}\")]");
+            sb.AppendLine($"public partial class {ClassName(m)} : ModalValues");
+            sb.AppendLine("{");
+            Members(sb, app, m.Fields);
             sb.AppendLine("}");
         }
         return sb.ToString();
+    }
+
+    /// <summary>A property per field, and a class of constants per choice field.</summary>
+    static void Members(StringBuilder sb, AppDefinition app, IReadOnlyList<FieldDefinition> fields)
+    {
+        foreach (var f in fields)
+        {
+            var what = f.Type switch
+            {
+                FieldType.Reference => $": id of a {ClassName(app.Entity(f.Reference!)!)}",
+                FieldType.Company => ": id of a company",
+                FieldType.Location => ": id of a location",
+                FieldType.Plant => ": id of a plant",
+                FieldType.Period => ": id of a period",
+                _ => "",
+            };
+            sb.AppendLine($"    /// <summary>{Escape(f.Label)}{(f.Required ? " (required)" : "")}{what}.</summary>");
+            sb.AppendLine($"    [Field(\"{f.Key}\")] public {TypeOf(f)} {PropertyName(f)} {{ get; set; }}");
+        }
+        foreach (var f in fields.Where(f => f.Type == FieldType.Choice))
+        {
+            sb.AppendLine();
+            sb.AppendLine($"    /// <summary>The values of {PropertyName(f)}.</summary>");
+            sb.AppendLine($"    public static class {PropertyName(f)}Values");
+            sb.AppendLine("    {");
+            var used = new HashSet<string>();
+            foreach (var c in f.Choices!)
+            {
+                var name = Pascal(c.Value);
+                if (name.Length == 0 || !char.IsLetter(name[0])) name = "V" + name;
+                while (!used.Add(name)) name += "_";
+                sb.AppendLine($"        /// <summary>{Escape(c.Label)}</summary>");
+                sb.AppendLine($"        public const string {name} = \"{c.Value.Replace("\\", "\\\\").Replace("\"", "\\\"")}\";");
+            }
+            sb.AppendLine("    }");
+        }
     }
 
     static string TypeOf(FieldDefinition f) => f.Type switch
@@ -74,7 +101,7 @@ public static class EntityCodeGenerator
         FieldType.Date => "DateOnly?",
         FieldType.DateTime => "DateTime?",
         FieldType.Boolean => "bool?",
-        FieldType.Reference => "Guid?",
+        FieldType.Reference or FieldType.Company or FieldType.Location or FieldType.Plant or FieldType.Period => "Guid?",
         _ => "object?",
     };
 

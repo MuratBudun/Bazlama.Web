@@ -1,0 +1,382 @@
+{
+  "chrome": "Chrome/154.0.8037.58",
+  "base": "http://127.0.0.1:5420",
+  "throttle": 1,
+  "variant": [],
+  "loads": [
+    {
+      "name": "Ana sayfa, soğuk (önbellek yok)",
+      "painted": 75.8,
+      "fcp": 80,
+      "requests": 8,
+      "transferKB": 103.7,
+      "jsKB": 268.1,
+      "api": 14.6,
+      "script": 12.7,
+      "style": 6.4,
+      "layout": 1.5
+    },
+    {
+      "name": "Ana sayfa, sıcak (önbellekten)",
+      "painted": 54.1,
+      "fcp": 64,
+      "requests": 8,
+      "transferKB": 0.5,
+      "jsKB": 268.1,
+      "api": 16.6,
+      "script": 14.4,
+      "style": 3.9,
+      "layout": 1.6
+    },
+    {
+      "name": "Doğrudan liste linki, sıcak (50 satır)",
+      "painted": 155.2,
+      "fcp": 92,
+      "requests": 11,
+      "transferKB": 0.5,
+      "jsKB": 268.1,
+      "api": 39.4,
+      "script": 45,
+      "style": 26.6,
+      "layout": 15.2
+    },
+    {
+      "name": "Doğrudan kayıt linki, sıcak (400 kalem)",
+      "painted": 138.8,
+      "fcp": 68,
+      "requests": 11,
+      "transferKB": 0.5,
+      "jsKB": 268.1,
+      "api": 53.6,
+      "script": 38.6,
+      "style": 21.6,
+      "layout": 12.1
+    }
+  ],
+  "actions": [
+    {
+      "name": "Karttan uygulama sekmesi açma",
+      "painted": 13.2,
+      "api": 0,
+      "script": 5.1,
+      "style": 2.4,
+      "layout": 2.3,
+      "client": 13.2
+    },
+    {
+      "name": "Menüden liste (Müşteriler, 50 satır)",
+      "painted": 53.5,
+      "api": 12.8,
+      "script": 13.3,
+      "style": 14.6,
+      "layout": 8.4,
+      "client": 40.7
+    },
+    {
+      "name": "Listeden listeye (Siparişler, 50 satır)",
+      "painted": 32.2,
+      "api": 0,
+      "script": 10.2,
+      "style": 10.4,
+      "layout": 6.2,
+      "client": 32.2
+    },
+    {
+      "name": "Kayıt formu (7 kalem)",
+      "painted": 61.3,
+      "api": 10.1,
+      "script": 15.9,
+      "style": 11.5,
+      "layout": 9.5,
+      "client": 51.2
+    },
+    {
+      "name": "Kayıt formu (120 kalem, tam çizim)",
+      "painted": 133,
+      "api": 11,
+      "script": 30.8,
+      "style": 37,
+      "layout": 27.7,
+      "client": 122
+    },
+    {
+      "name": "Kayıt formu (400 kalem, sanal kaydırma)",
+      "painted": 61.9,
+      "api": 13.5,
+      "script": 15.6,
+      "style": 12.8,
+      "layout": 10.6,
+      "client": 48.4
+    },
+    {
+      "name": "Kayıttan listeye dönüş",
+      "painted": 51,
+      "api": 11.5,
+      "script": 12.7,
+      "style": 13.9,
+      "layout": 8,
+      "client": 39.5
+    },
+    {
+      "name": "Sekme: uygulama → ana sayfa",
+      "painted": 9.8,
+      "api": 0,
+      "script": 2.7,
+      "style": 3.1,
+      "layout": 1,
+      "client": 9.8
+    },
+    {
+      "name": "Sekme: ana sayfa → uygulama (canlı içerik)",
+      "painted": 30.1,
+      "api": 0,
+      "script": 8,
+      "style": 9.5,
+      "layout": 7.4,
+      "client": 30.1
+    },
+    {
+      "name": "Liste sıralama (sunucuda, 50 satır)",
+      "painted": 21.9,
+      "api": 3.5,
+      "script": 4.9,
+      "style": 4.4,
+      "layout": 3.8,
+      "client": 18.4
+    },
+    {
+      "name": "Kalem düzenleme diyaloğu açma",
+      "painted": 17.2,
+      "api": 0,
+      "script": 3.6,
+      "style": 8.5,
+      "layout": 1.6,
+      "client": 17.2
+    },
+    {
+      "name": "Alan değişimi: Yönetim › Kullanıcılar",
+      "painted": 31.1,
+      "api": 7.5,
+      "script": 10.2,
+      "style": 7.9,
+      "layout": 3.8,
+      "client": 23.6
+    },
+    {
+      "name": "Alan değişimi: Uygulamalar (ana sayfa)",
+      "painted": 13.2,
+      "api": 0,
+      "script": 6.4,
+      "style": 2.7,
+      "layout": 0.9,
+      "client": 13.2
+    },
+    {
+      "name": "Geliştirme: çalışma alanını açma (ilk)",
+      "painted": 138.7,
+      "script": 30.1,
+      "style": 15.5,
+      "layout": 19.4
+    },
+    {
+      "name": "C# dosyası açma (ilk: Monaco yüklenir)",
+      "painted": 875.9,
+      "script": 268.2,
+      "style": 21.5,
+      "layout": 63.6
+    },
+    {
+      "name": "C# dosyası açma (ikinci dosya)",
+      "painted": 53.5,
+      "script": 28.9,
+      "style": 8.8,
+      "layout": 5.1
+    },
+    {
+      "name": "Entity tasarımcısı sekmesi açma",
+      "painted": 69.1,
+      "script": 25.8,
+      "style": 8.2,
+      "layout": 33.6
+    },
+    {
+      "name": "Tasarım → Kod görünümü (JSON, ilk)",
+      "painted": 45,
+      "script": 17.2,
+      "style": 5.7,
+      "layout": 4.4
+    },
+    {
+      "name": "Form tasarımcısı sekmesi açma",
+      "painted": 67.8,
+      "script": 24.1,
+      "style": 14.2,
+      "layout": 19.1
+    }
+  ],
+  "typing": {
+    "chars": 150,
+    "typed": 159,
+    "scriptPerKey": 0.076,
+    "stylePerKey": 0.009,
+    "layoutPerKey": 0.595,
+    "taskPerKey": 2.234,
+    "layoutsPerKey": 1,
+    "wallPerKey": 2.77
+  },
+  "memory": [
+    {
+      "name": "Geliştirme: çalışma alanı (Monaco'dan önce)",
+      "heapMB": 3.09,
+      "nodes": 2965,
+      "listeners": 236
+    },
+    {
+      "name": "Geliştirme: Monaco + 2 C# + JSON + tasarımcılar",
+      "heapMB": 17.06,
+      "nodes": 6395,
+      "listeners": 1135
+    },
+    {
+      "name": "Ana sayfa (kartlar)",
+      "heapMB": 1.71,
+      "domElements": 165,
+      "nodes": 1002,
+      "listeners": 61
+    },
+    {
+      "name": "Uygulama sekmesi + liste (50 satır)",
+      "heapMB": 2.22,
+      "domElements": 867,
+      "nodes": 3115,
+      "listeners": 139
+    },
+    {
+      "name": "Kayıt formu (7 kalem)",
+      "heapMB": 2.53,
+      "domElements": 534,
+      "nodes": 2956,
+      "listeners": 255
+    },
+    {
+      "name": "Kayıt formu (120 kalem, tam çizim)",
+      "heapMB": 3.29,
+      "domElements": 1777,
+      "nodes": 5799,
+      "listeners": 820
+    },
+    {
+      "name": "Kayıt formu (400 kalem, sanal kaydırma)",
+      "heapMB": 2.97,
+      "domElements": 666,
+      "nodes": 3258,
+      "listeners": 315
+    }
+  ],
+  "leaks": [
+    {
+      "name": "Liste ↔ kayıt formu",
+      "cycles": 40,
+      "heapMB": [
+        2.68,
+        3.06,
+        3.16
+      ],
+      "firstKBPerCycle": 9.72,
+      "secondKBPerCycle": 2.48,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Liste ↔ 120 kalemli kayıt",
+      "cycles": 20,
+      "heapMB": [
+        3.17,
+        3.23,
+        3.29
+      ],
+      "firstKBPerCycle": 3.45,
+      "secondKBPerCycle": 2.7,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Uygulama sekmesi aç / kapat",
+      "cycles": 30,
+      "heapMB": [
+        2.84,
+        2.93,
+        3
+      ],
+      "firstKBPerCycle": 2.87,
+      "secondKBPerCycle": 2.32,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Sekme geçişi ana sayfa ↔ uygulama",
+      "cycles": 50,
+      "heapMB": [
+        3.35,
+        3.56,
+        3.63
+      ],
+      "firstKBPerCycle": 4.32,
+      "secondKBPerCycle": 1.51,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Diyalog aç / kapat (kalem formu)",
+      "cycles": 40,
+      "heapMB": [
+        3.69,
+        3.76,
+        3.78
+      ],
+      "firstKBPerCycle": 1.61,
+      "secondKBPerCycle": 0.65,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Alan değişimi Uygulamalar ↔ Yönetim",
+      "cycles": 20,
+      "heapMB": [
+        3.29,
+        3.28,
+        3.29
+      ],
+      "firstKBPerCycle": -0.32,
+      "secondKBPerCycle": 0.45,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Geliştirme: C# sekmesi aç / kapat",
+      "cycles": 20,
+      "heapMB": [
+        18,
+        18.89,
+        19.45
+      ],
+      "firstKBPerCycle": 45.49,
+      "secondKBPerCycle": 28.5,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Geliştirme'ye gir / çık",
+      "cycles": 10,
+      "heapMB": [
+        17.06,
+        17.4,
+        17.48
+      ],
+      "firstKBPerCycle": 34.49,
+      "secondKBPerCycle": 9.08,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    }
+  ]
+}

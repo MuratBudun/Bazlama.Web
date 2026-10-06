@@ -247,6 +247,11 @@ pre.json {
   gap: 0.25rem;
   min-width: 0;
 }
+.field-hint {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--bz-color-fg-muted);
+}
 .field-error {
   font-size: 0.85em;
   color: var(--bz-color-danger);
@@ -343,6 +348,60 @@ bazlama-workbench ul {
   padding-bottom: 0.5rem;
 }
 .wb-explorer bz-tree [data-part="badge"] {
+  color: var(--bz-color-danger);
+}
+/* The editors over the problems panel, and the bar that stands for the panel while it is closed. */
+.wb-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.wb-main > bz-split {
+  flex: 1;
+  min-height: 0;
+}
+.wb-problems-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2rem;
+  padding: 0 0.6rem 0 0.75rem;
+  border: 0;
+  border-top: 1px solid var(--bz-color-border);
+  background: var(--bz-color-bg);
+  color: var(--bz-color-fg-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: start;
+  cursor: pointer;
+}
+.wb-problems-bar .small {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.wb-problems-bar:hover {
+  background: var(--bz-color-surface);
+}
+.wb-problems-bar:focus-visible {
+  outline: 2px solid var(--bz-color-primary);
+  outline-offset: -2px;
+}
+.wb-counts {
+  display: inline-flex;
+  gap: 0.3rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.wb-counts bz-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+/* Closed with errors: the title says so in red. */
+.wb-problems-bar[data-errors="true"] > strong,
+.wb-problems-bar[data-errors="true"] > svg {
   color: var(--bz-color-danger);
 }
 .wb-editors {
@@ -479,6 +538,8 @@ bazlama-menu-designer {
 .ee-list {
   flex: 1;
   min-height: 0;
+  /* The list fills its pane: the component's own 16rem limit does not apply here. */
+  max-height: none;
   overflow: auto;
   padding: 0.35rem;
   border: 0;
@@ -543,35 +604,21 @@ bazlama-menu-designer {
   gap: 0.75rem;
 }
 
-/* Form designer: sections next to a preview of the runtime form. */
-.fd-layout {
+/* List designer: the columns next to a preview of the grid. */
+.ld-layout {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(26rem, 100%), 1fr));
   gap: 1rem;
   align-items: start;
 }
-.fd-section {
-  display: grid;
-  gap: 0.6rem;
-  padding: 0.75rem;
-  border: 1px solid var(--bz-color-border);
-  border-radius: var(--bz-radius-md, 0.5rem);
-}
-.fd-section > .row {
-  flex-wrap: nowrap;
-}
-.fd-section > .row > bz-input {
-  flex: 1;
-  min-width: 0;
-}
-.fd-fields {
+.ld-fields {
   display: grid;
   gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.fd-field {
+.ld-field {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -579,12 +626,231 @@ bazlama-menu-designer {
   border-radius: var(--bz-radius-sm);
   background: var(--bz-color-bg);
 }
-.fd-field > :first-child {
+.ld-field > :first-child {
   color: var(--bz-color-fg-muted);
 }
-.fd-preview {
+
+/*
+ * Form designer: palette | canvas | properties. It fills its tab; each of the three scrolls on
+ * its own.
+ */
+bazlama-form-designer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+bazlama-form-designer > bz-alert {
+  margin: 0.5rem 1rem 0;
+}
+.fd-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--bz-color-border);
+}
+.fd-head h1 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.fd {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  gap: 1rem;
+  grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr) minmax(17rem, 20rem);
+}
+.fd > * {
+  min-height: 0;
+  overflow: auto;
+}
+.fd-palette,
+.fd-props {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  background: var(--bz-color-surface);
+}
+/* The panels scroll: what is in them keeps its height. */
+:is(.fd-palette, .fd-props) > * {
+  flex-shrink: 0;
+}
+:is(.fd-palette, .fd-props) > bz-button {
+  align-self: flex-start;
+}
+.fd-palette {
+  border-right: 1px solid var(--bz-color-border);
+}
+/* The side panel: two tabs (properties, object tree); the open one scrolls. */
+.fd > .fd-side {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--bz-color-border);
+  background: var(--bz-color-surface);
+}
+.fd-side > bz-tabs {
+  flex: 1;
+  min-height: 0;
+}
+.fd-side bz-tab {
+  padding-inline: 0.6rem;
+  white-space: nowrap;
+}
+.fd-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.5rem 0.5rem 0.75rem;
+}
+.fd-tree > .fd-note {
+  padding-inline: 0.25rem;
+}
+:is(.fd-palette, .fd-props) h3 {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bz-color-fg-muted);
+}
+:is(.fd-palette, .fd-props) h3 > .small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.fd-palette-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fd-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: var(--bz-radius-sm);
+  background: var(--bz-color-bg);
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: start;
+  cursor: grab;
+}
+.fd-palette-item > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fd-palette-item > :first-child,
+.fd-palette-item > :last-child {
+  flex: none;
+  color: var(--bz-color-fg-muted);
+}
+.fd-palette-item:hover,
+.fd-palette-item:focus-visible {
+  border-color: var(--bz-color-primary);
+  outline: none;
+}
+.fd-palette-item.placed {
+  background: none;
+  color: var(--bz-color-fg-muted);
+  cursor: pointer;
+}
+.fd-palette-item.placed > :last-child {
+  color: var(--bz-color-success, #16a34a);
+}
+.fd-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--bz-color-fg-muted);
+}
+.fd-note.warning {
+  color: var(--bz-color-warning-fg, #92400e);
+}
+.fd-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  font-size: 0.875rem;
+}
+.fd-facts dt {
+  color: var(--bz-color-fg-muted);
+}
+.fd-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The canvas: the form as Runtime draws it, with frames to select and drag. */
+.fd-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--bz-color-bg);
+}
+.fd-section {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border: 1px solid var(--bz-color-border);
+  border-radius: var(--bz-radius-md, 0.5rem);
+  background: var(--bz-color-surface);
+}
+.fd-section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0.25rem;
+  border-radius: var(--bz-radius-sm);
+  cursor: grab;
+}
+.fd-section-head > :first-child {
+  color: var(--bz-color-fg-muted);
+}
+.fd-section-head > .small {
+  margin-inline-start: auto;
+}
+.fd-item {
+  position: relative;
+  min-width: 0;
+  padding: 0.35rem;
+  border: 1px dashed transparent;
+  border-radius: var(--bz-radius-sm);
+  cursor: grab;
+}
+.fd-item:hover {
+  border-color: var(--bz-color-border);
+}
+.fd-item-body {
+  pointer-events: none;
+}
+:is(.fd-section, .fd-item)[aria-selected="true"] {
+  border: 1px solid var(--bz-color-primary);
+  box-shadow: 0 0 0 1px var(--bz-color-primary);
+}
+:is(.fd-item, .fd-section-head):focus-visible {
+  outline: 2px solid var(--bz-color-primary);
+  outline-offset: 1px;
+}
+.fd-empty {
+  margin: 0;
+  padding: 1rem;
+  border: 1px dashed var(--bz-color-border);
+  border-radius: var(--bz-radius-sm);
+  color: var(--bz-color-fg-muted);
+  font-size: 0.875rem;
+  text-align: center;
 }
 .fd-detail {
   display: flex;
@@ -593,6 +859,203 @@ bazlama-menu-designer {
   padding: 0.75rem;
   border: 1px dashed var(--bz-color-border);
   border-radius: var(--bz-radius-md, 0.5rem);
+  color: var(--bz-color-fg-muted);
+}
+/* The form's tools menu (a tab of the side panel): the items and the selected one's properties. */
+.fd-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+}
+.fd-tools > * {
+  flex-shrink: 0;
+  min-width: 0;
+}
+.fd-tools > bz-toolbar {
+  flex-wrap: wrap;
+}
+.fd-tools > bz-button {
+  align-self: flex-start;
+}
+.fd-tools h3 {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bz-color-fg-muted);
+}
+.fd-tool-list {
+  padding: 0.25rem;
+  border: 1px solid var(--bz-color-border);
+  border-radius: var(--bz-radius-md, 0.5rem);
+  background: var(--bz-color-bg);
+}
+.fd-tool-list > .fd-tool-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.fd-tool-row > svg,
+.fd-tool-mark {
+  flex: none;
+  color: var(--bz-color-fg-muted);
+}
+.fd-tool-mark {
+  display: inline-flex;
+  color: var(--bz-color-warning-fg, #92400e);
+}
+/* A tool's method: typed or picked, with the button that goes to it in the code. */
+.fd-method {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.4rem;
+}
+.fd-tools .fd-note > svg {
+  vertical-align: -2px;
+}
+/* A tool's icon: the chosen one, opening to the icon set. */
+.fd-icon-picker {
+  border: 1px solid var(--bz-color-border-strong, var(--bz-color-border));
+  border-radius: var(--bz-radius-md, 0.5rem);
+  background: var(--bz-color-surface);
+}
+.fd-icon-picker > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.875rem;
+}
+.fd-icon-picker > summary::-webkit-details-marker {
+  display: none;
+}
+.fd-icon-picker > summary:focus-visible {
+  outline: 2px solid var(--bz-color-primary);
+  outline-offset: 1px;
+  border-radius: inherit;
+}
+.fd-icon-picker[open] > summary > svg:last-child {
+  rotate: 180deg;
+}
+.fd-icon-label {
+  font-weight: 600;
+}
+.fd-icon-chosen {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.fd-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2rem, 1fr));
+  gap: 2px;
+  padding: 0.4rem;
+  border-top: 1px solid var(--bz-color-border);
+}
+.fd-icon {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--bz-radius-sm);
+  background: none;
+  color: var(--bz-color-fg);
+  cursor: pointer;
+}
+.fd-icon:hover,
+.fd-icon:focus-visible {
+  background: var(--bz-color-surface-hover, var(--bz-color-bg));
+  outline: none;
+  border-color: var(--bz-color-border);
+}
+.fd-icon[aria-pressed="true"] {
+  border-color: var(--bz-color-primary);
+  background: color-mix(in srgb, var(--bz-color-primary) 12%, transparent);
+  color: var(--bz-color-primary);
+}
+.fd-tool-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  line-height: 1.3;
+}
+.fd-tool-name,
+.fd-tool-method {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fd-tool-method {
+  font: 0.7rem ui-monospace, "Cascadia Code", Consolas, monospace;
+  color: var(--bz-color-fg-muted);
+}
+.fd-code {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--bz-radius-sm);
+  background: var(--bz-color-bg);
+  border: 1px solid var(--bz-color-border);
+  font: 0.75rem/1.5 ui-monospace, "Cascadia Code", Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* A modal on the canvas: as wide as the dialog it becomes, with its buttons. */
+.fd[data-kind="modal"] .fd-canvas > * {
+  box-sizing: border-box;
+  width: min(100%, 40rem);
+  margin-inline: auto;
+}
+.fd-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+  opacity: 0.7;
+}
+/* Where a dragged field or section would land. */
+.fd-item[data-drop="before"] {
+  box-shadow: -3px 0 0 var(--bz-color-primary);
+}
+.fd-item[data-drop="after"] {
+  box-shadow: 3px 0 0 var(--bz-color-primary);
+}
+.fd-section[data-columns="1"] .fd-item[data-drop="before"],
+.fd-section[data-drop="before"] {
+  box-shadow: 0 -3px 0 var(--bz-color-primary);
+}
+.fd-section[data-columns="1"] .fd-item[data-drop="after"],
+.fd-section[data-drop="after"] {
+  box-shadow: 0 3px 0 var(--bz-color-primary);
+}
+:is(.fd-section, .fd-canvas)[data-drop="inside"] {
+  outline: 2px dashed var(--bz-color-primary);
+  outline-offset: -2px;
+}
+@media (max-width: 900px) {
+  .fd {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+  .fd > * {
+    overflow: visible;
+  }
+  .fd-palette,
+  .fd > .fd-side {
+    border: 0;
+    border-bottom: 1px solid var(--bz-color-border);
+    overflow: visible;
+  }
 }
 /* The menu toggle in a page head: the arrow turns when the menu is hidden. */
 .menu-toggle[aria-expanded="false"] > svg {
@@ -909,7 +1372,7 @@ a.button-link:hover {
   overflow: auto;
 }
 /* Editors that fill the tab (fields | properties) scroll inside themselves. */
-.dual-design:has(> :is(bazlama-entity-editor, bazlama-menu-designer)) {
+.dual-design:has(> :is(bazlama-entity-editor, bazlama-menu-designer, bazlama-form-designer)) {
   overflow: hidden;
 }
 .dual-code {

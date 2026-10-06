@@ -68,9 +68,9 @@ export const ListDesigner = define("bazlama-list-designer", {
       ;[cols[i], cols[j]] = [cols[j], cols[i]]
     }
 
-    const columnRow = (f: FieldDef, i: number, count: number) => html`<li class="fd-field">
+    const columnRow = (f: FieldDef, i: number, count: number) => html`<li class="ld-field">
       ${icon("table", { size: 14 })}
-      <span class="fd-label">${f.label}</span>
+      <span class="ld-label">${f.label}</span>
       <span class="muted small">${typeLabel(f.type)}</span>
       <span class="spacer"></span>
       <bz-button size="sm" variant="ghost" aria-label=${`${f.label} sola`} ?disabled=${i === 0} @click=${() => edit((l) => swap(l.columns, i, i - 1))}>${icon("chevron-up", { size: 14 })}</bz-button>
@@ -85,7 +85,7 @@ export const ListDesigner = define("bazlama-list-designer", {
       const unused = e.fields.filter((f) => !l.columns.includes(f.key))
       return html`<div class="stack">
         ${columns.length
-          ? html`<ul class="fd-fields">${columns.map((f, i) => columnRow(f, i, columns.length))}</ul>`
+          ? html`<ul class="ld-fields">${columns.map((f, i) => columnRow(f, i, columns.length))}</ul>`
           : html`<bz-alert>Listede sütun yok: en az bir alan ekleyin.</bz-alert>`}
         ${unused.length
           ? html`<div class="row">
@@ -148,7 +148,7 @@ export const ListDesigner = define("bazlama-list-designer", {
           : null}
       ${() => (entity()?.parent ? html`<bz-alert>Detay entity'nin listesi: ana kaydın formundaki tabloda kullanılır, menüde açılamaz.</bz-alert>` : null)}
       ${settings()}
-      <div class="fd-layout">
+      <div class="ld-layout">
         <bz-panel heading="Sütunlar">${() => columnsEditor()}</bz-panel>
         <bz-panel heading="Önizleme">${() => preview()}</bz-panel>
       </div>`

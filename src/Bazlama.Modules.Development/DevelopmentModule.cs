@@ -63,6 +63,9 @@ public static partial class DevelopmentModule
         }
     }
 
+    /// <summary>A form's tools call code: such a definition cannot be published without it.</summary>
+    static bool NeedsCode(AppDefinition definition) => definition.Forms.Any(f => f.Tools.Count > 0);
+
     /// <summary>The draft with the version to publish.</summary>
     static async Task<(AppDefinition? Definition, string? Error)> DraftAsync(KernelDbContext db, string app, string version, CancellationToken ct)
     {
@@ -71,18 +74,7 @@ public static partial class DevelopmentModule
         try
         {
             var draft = AppDefinition.Parse(json);
-            return (new AppDefinition
-            {
-                Key = draft.Key,
-                Name = draft.Name,
-                Version = version,
-                Description = draft.Description,
-                Icon = draft.Icon,
-                Entities = draft.Entities,
-                Forms = draft.Forms,
-                Lists = draft.Lists,
-                Menu = draft.Menu,
-            }, null);
+            return (draft.WithVersion(version), null);
         }
         catch (JsonException e)
         {
@@ -196,9 +188,14 @@ public static partial class DevelopmentModule
             return Results.NoContent();
         });
 
-        // Unsaved editor contents → diagnostics (the editor marks them).
+        // Unsaved editor contents → diagnostics (the editor marks them) and the forms' code classes
+        // (the form designer offers their methods to the tools and jumps to them).
         app.MapPost("/check", async (string app, FilesCheck r, CodeBuildService builds, CancellationToken ct) =>
-            await builds.EditingDefinitionAsync(app, ct) is null ? Results.NotFound() : Results.Ok(await builds.CheckAsync(app, r.Files, ct)));
+        {
+            if (await builds.EditingDefinitionAsync(app, ct) is null) return Results.NotFound();
+            var (output, forms) = await builds.CheckWithOutlineAsync(app, r.Files, ct);
+            return Results.Ok(new { success = output.Success, diagnostics = output.Diagnostics, forms });
+        });
 
         app.MapPost("/complete", async (string app, CompletionRequest r, CodeBuildService builds, CancellationToken ct) =>
             await builds.EditingDefinitionAsync(app, ct) is null ? Results.NotFound() : Results.Ok(await builds.CompleteAsync(app, r.Files, r.Path, r.Line, r.Column, ct)));
@@ -251,7 +248,7 @@ public static partial class DevelopmentModule
             if (definition is null) return AuthEndpoints.Problem([error!]);
             var plan = await installer.PlanAsync(definition, ct);
             var files = await builds.FilesAsync(app, ct);
-            var code = files.Count == 0 ? null : await builds.CheckAgainstAsync(definition, files, await builds.LibrariesOfAsync(app, ct), ct);
+            var code = files.Count == 0 && !NeedsCode(definition) ? null : await builds.CheckAgainstAsync(definition, files, await builds.LibrariesOfAsync(app, ct), ct);
             return Results.Ok(new { plan, code });
         });
 
@@ -261,7 +258,7 @@ public static partial class DevelopmentModule
             var (definition, error) = await DraftAsync(db, app, r.Version, ct);
             if (definition is null) return AuthEndpoints.Problem([error!]);
             var files = await builds.FilesAsync(app, ct);
-            if (files.Count > 0)
+            if (files.Count > 0 || NeedsCode(definition))
             {
                 var code = await builds.CheckAgainstAsync(definition, files, await builds.LibrariesOfAsync(app, ct), ct);
                 if (!code.Success) return Results.Json(new { errors = new[] { "Kod yeni tanımla derlenmiyor; önce kodu düzeltin." }, code }, statusCode: StatusCodes.Status400BadRequest);

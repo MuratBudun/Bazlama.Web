@@ -1,0 +1,540 @@
+{
+  "chrome": "Chrome/154.0.8037.58",
+  "throttle": 1,
+  "table": [
+    {
+      "op": "1.000 satır oluştur",
+      "bazlama": {
+        "cpu": 83.55,
+        "script": 0.06,
+        "style": 12.35,
+        "layout": 39.46,
+        "painted": 83.8,
+        "sync": 19.7
+      },
+      "vanilla": {
+        "cpu": 75.59,
+        "script": 0.07,
+        "style": 12.09,
+        "layout": 48.15,
+        "painted": 83.5,
+        "sync": 5
+      },
+      "ratio": 1.11
+    },
+    {
+      "op": "1.000 satırı yenileriyle değiştir",
+      "bazlama": {
+        "cpu": 114.86,
+        "script": 3.67,
+        "style": 15.82,
+        "layout": 43.4,
+        "painted": 116.65,
+        "sync": 36.15
+      },
+      "vanilla": {
+        "cpu": 82.9,
+        "script": 0.06,
+        "style": 15.39,
+        "layout": 38.62,
+        "painted": 81.7,
+        "sync": 13.35
+      },
+      "ratio": 1.39
+    },
+    {
+      "op": "her 10. satırı güncelle (1.000)",
+      "bazlama": {
+        "cpu": 33.12,
+        "script": 0.07,
+        "style": 0,
+        "layout": 19.64,
+        "painted": 38.2,
+        "sync": 0.6
+      },
+      "vanilla": {
+        "cpu": 33.66,
+        "script": 0.07,
+        "style": 0.34,
+        "layout": 19.19,
+        "painted": 39.2,
+        "sync": 0.55
+      },
+      "ratio": 0.98
+    },
+    {
+      "op": "satır seç (1.000)",
+      "bazlama": {
+        "cpu": 2.97,
+        "script": 0.06,
+        "style": 0.12,
+        "layout": 0,
+        "painted": 10.25,
+        "sync": 0.7
+      },
+      "vanilla": {
+        "cpu": 2.16,
+        "script": 0.07,
+        "style": 0.13,
+        "layout": 0,
+        "painted": 13.7,
+        "sync": 0.1
+      },
+      "ratio": 1.38
+    },
+    {
+      "op": "iki satırın yerini değiştir (1.000)",
+      "bazlama": {
+        "cpu": 83.08,
+        "script": 0.07,
+        "style": 17.23,
+        "layout": 36.88,
+        "painted": 83.4,
+        "sync": 11.25
+      },
+      "vanilla": {
+        "cpu": 9.71,
+        "script": 0.05,
+        "style": 0.18,
+        "layout": 5.08,
+        "painted": 14.45,
+        "sync": 0.1
+      },
+      "ratio": 8.56
+    },
+    {
+      "op": "bir satır sil (1.000)",
+      "bazlama": {
+        "cpu": 14.34,
+        "script": 0.06,
+        "style": 0.08,
+        "layout": 5.65,
+        "painted": 20.85,
+        "sync": 0.75
+      },
+      "vanilla": {
+        "cpu": 10.28,
+        "script": 0.05,
+        "style": 0.07,
+        "layout": 4.4,
+        "painted": 13.4,
+        "sync": 0.1
+      },
+      "ratio": 1.39
+    },
+    {
+      "op": "10.000 satır oluştur",
+      "bazlama": {
+        "cpu": 990.52,
+        "script": 0.07,
+        "style": 195.41,
+        "layout": 444.76,
+        "painted": 999.9,
+        "sync": 228.5
+      },
+      "vanilla": {
+        "cpu": 829.59,
+        "script": 0.06,
+        "style": 150.53,
+        "layout": 489.3,
+        "painted": 853.2,
+        "sync": 97.1
+      },
+      "ratio": 1.19
+    },
+    {
+      "op": "1.000 satıra 1.000 ekle",
+      "bazlama": {
+        "cpu": 118.06,
+        "script": 4.05,
+        "style": 13.55,
+        "layout": 58.56,
+        "painted": 125.7,
+        "sync": 22.5
+      },
+      "vanilla": {
+        "cpu": 78.43,
+        "script": 0.07,
+        "style": 13.73,
+        "layout": 40.29,
+        "painted": 78.35,
+        "sync": 6
+      },
+      "ratio": 1.51
+    },
+    {
+      "op": "1.000 satırı temizle",
+      "bazlama": {
+        "cpu": 10.25,
+        "script": 0.05,
+        "style": 0.02,
+        "layout": 0.09,
+        "painted": 9.95,
+        "sync": 9.35
+      },
+      "vanilla": {
+        "cpu": 7.35,
+        "script": 0.06,
+        "style": 0,
+        "layout": 0.09,
+        "painted": 9.05,
+        "sync": 6.45
+      },
+      "ratio": 1.39
+    },
+    {
+      "memory": {
+        "rows": 1000,
+        "bazlama": {
+          "heapKB": 1867.2,
+          "perRowKB": 1.87,
+          "leftKB": 6.4,
+          "listeners": 2000
+        },
+        "vanilla": {
+          "heapKB": 161.6,
+          "perRowKB": 0.16,
+          "leftKB": 78.1,
+          "listeners": 0
+        }
+      }
+    },
+    {
+      "memory": {
+        "rows": 10000,
+        "bazlama": {
+          "heapKB": 18141.5,
+          "perRowKB": 1.81,
+          "leftKB": -10.9,
+          "listeners": 20000
+        },
+        "vanilla": {
+          "heapKB": 1259.1,
+          "perRowKB": 0.13,
+          "leftKB": 430.4,
+          "listeners": 0
+        }
+      }
+    }
+  ],
+  "components": [
+    {
+      "kind": "button",
+      "count": 1000,
+      "bazlama": {
+        "cpu": 74.17,
+        "script": 21.94,
+        "style": 4.34,
+        "layout": 21.83,
+        "painted": 75.6,
+        "sync": 37.8,
+        "perMs": 0.074,
+        "kb": 4.96,
+        "elements": 1,
+        "listeners": 4,
+        "leftKB": 0.9
+      },
+      "vanilla": {
+        "cpu": 20.9,
+        "script": 0.05,
+        "style": 2.34,
+        "layout": 12.35,
+        "painted": 20.5,
+        "sync": 1,
+        "perMs": 0.021,
+        "kb": 0,
+        "elements": 1,
+        "listeners": 0,
+        "leftKB": 0
+      }
+    },
+    {
+      "kind": "input",
+      "count": 1000,
+      "bazlama": {
+        "cpu": 253.01,
+        "script": 114.99,
+        "style": 28.12,
+        "layout": 68.07,
+        "painted": 270.7,
+        "sync": 143.3,
+        "perMs": 0.253,
+        "kb": 17.15,
+        "elements": 6,
+        "listeners": 4,
+        "leftKB": -0.2
+      },
+      "vanilla": {
+        "cpu": 124.31,
+        "script": 2.36,
+        "style": 10.11,
+        "layout": 87.43,
+        "painted": 124.1,
+        "sync": 2.1,
+        "perMs": 0.124,
+        "kb": 0,
+        "elements": 3,
+        "listeners": 0,
+        "leftKB": 0
+      }
+    },
+    {
+      "kind": "checkbox",
+      "count": 1000,
+      "bazlama": {
+        "cpu": 218.08,
+        "script": 95.71,
+        "style": 27.5,
+        "layout": 60.79,
+        "painted": 224.8,
+        "sync": 116.5,
+        "perMs": 0.218,
+        "kb": 13.99,
+        "elements": 6,
+        "listeners": 3,
+        "leftKB": -4.8
+      },
+      "vanilla": {
+        "cpu": 34.65,
+        "script": 0.06,
+        "style": 5.75,
+        "layout": 14.42,
+        "painted": 30.9,
+        "sync": 1.3,
+        "perMs": 0.035,
+        "kb": 0,
+        "elements": 2,
+        "listeners": 0,
+        "leftKB": 0
+      }
+    },
+    {
+      "kind": "combobox",
+      "count": 500,
+      "bazlama": {
+        "cpu": 257.61,
+        "script": 147.96,
+        "style": 21.96,
+        "layout": 41.22,
+        "painted": 268,
+        "sync": 159.3,
+        "perMs": 0.515,
+        "kb": 25.99,
+        "elements": 12,
+        "listeners": 10,
+        "leftKB": 7.7
+      },
+      "vanilla": {
+        "cpu": 139.47,
+        "script": 2.56,
+        "style": 44.35,
+        "layout": 56.68,
+        "painted": 137.4,
+        "sync": 10.6,
+        "perMs": 0.279,
+        "kb": 0,
+        "elements": 7,
+        "listeners": 0,
+        "leftKB": 0
+      }
+    },
+    {
+      "kind": "badge",
+      "count": 1000,
+      "bazlama": {
+        "cpu": 80.32,
+        "script": 30.43,
+        "style": 2.64,
+        "layout": 24.05,
+        "painted": 82.6,
+        "sync": 45.3,
+        "perMs": 0.08,
+        "kb": 4.5,
+        "elements": 1,
+        "listeners": 0,
+        "leftKB": -5.2
+      },
+      "vanilla": {
+        "cpu": 14.23,
+        "script": 0.05,
+        "style": 1.38,
+        "layout": 7.71,
+        "painted": 24.8,
+        "sync": 0.7,
+        "perMs": 0.014,
+        "kb": 0,
+        "elements": 1,
+        "listeners": 0,
+        "leftKB": 0
+      }
+    }
+  ],
+  "grid": [
+    {
+      "rows": 100,
+      "virtual": "auto",
+      "mount": {
+        "cpu": 43.29,
+        "script": 2.76,
+        "style": 11.36,
+        "layout": 11.85,
+        "painted": 45.2,
+        "sync": 12.4
+      },
+      "rendered": 100,
+      "heapMB": 0.18,
+      "scroll": {
+        "frames": 120,
+        "median": 16.69999999999709,
+        "p95": 16.90000000000873,
+        "max": 116.69999999999709,
+        "over20ms": 2,
+        "scrolled": 3240,
+        "cpuPerFrame": 0.32,
+        "scriptPerFrame": 0.01
+      }
+    },
+    {
+      "rows": 1000,
+      "virtual": "auto",
+      "mount": {
+        "cpu": 19.69,
+        "script": 2.56,
+        "style": 6.09,
+        "layout": 4.13,
+        "painted": 21.5,
+        "sync": 7.9
+      },
+      "rendered": 21,
+      "heapMB": 0.31,
+      "scroll": {
+        "frames": 120,
+        "median": 16.69999999999709,
+        "p95": 16.80000000000291,
+        "max": 16.89999999999418,
+        "over20ms": 0,
+        "scrolled": 28800,
+        "cpuPerFrame": 8.42,
+        "scriptPerFrame": 1.32
+      },
+      "sortText": {
+        "cpu": 12.6,
+        "script": 0.1
+      },
+      "sortNumber": {
+        "cpu": 12.1,
+        "script": 0.1
+      }
+    },
+    {
+      "rows": 10000,
+      "virtual": "auto",
+      "mount": {
+        "cpu": 20.02,
+        "script": 3.69,
+        "style": 6.02,
+        "layout": 3.79,
+        "painted": 21.9,
+        "sync": 9.4
+      },
+      "rendered": 21,
+      "heapMB": 2.03,
+      "scroll": {
+        "frames": 120,
+        "median": 16.69999999999709,
+        "p95": 16.80000000000291,
+        "max": 16.89999999999418,
+        "over20ms": 0,
+        "scrolled": 28800,
+        "cpuPerFrame": 8.4,
+        "scriptPerFrame": 1.35
+      },
+      "sortText": {
+        "cpu": 36,
+        "script": 0.1
+      },
+      "sortNumber": {
+        "cpu": 21.4,
+        "script": 0.1
+      }
+    },
+    {
+      "rows": 100000,
+      "virtual": "auto",
+      "mount": {
+        "cpu": 27.03,
+        "script": 11.67,
+        "style": 5.34,
+        "layout": 3.85,
+        "painted": 27.6,
+        "sync": 17.5
+      },
+      "rendered": 21,
+      "heapMB": 18.77,
+      "scroll": {
+        "frames": 120,
+        "median": 16.69999999999709,
+        "p95": 18.90000000000873,
+        "max": 33.5,
+        "over20ms": 3,
+        "scrolled": 28800,
+        "cpuPerFrame": 9.1,
+        "scriptPerFrame": 1.5
+      },
+      "sortText": {
+        "cpu": 325.8,
+        "script": 0.1
+      },
+      "sortNumber": {
+        "cpu": 149.2,
+        "script": 0.1
+      }
+    },
+    {
+      "rows": 1000,
+      "virtual": "off",
+      "mount": {
+        "cpu": 353.14,
+        "script": 2.71,
+        "style": 96.47,
+        "layout": 133.45,
+        "painted": 360.3,
+        "sync": 64.3
+      },
+      "rendered": 1000,
+      "heapMB": 0.57,
+      "scroll": {
+        "frames": 120,
+        "median": 16.69999999999709,
+        "p95": 20.09999999999127,
+        "max": 47.39999999999418,
+        "over20ms": 6,
+        "scrolled": 28800,
+        "cpuPerFrame": 5.02,
+        "scriptPerFrame": 0.05
+      }
+    }
+  ],
+  "signals": [
+    {
+      "op": "100.000 signal + computed + effect oluştur",
+      "ms": 197.9,
+      "heapKBPerUnit": 1.113
+    },
+    {
+      "op": "100.000 signal'i güncelle (her biri 1 effect)",
+      "ms": 193.5,
+      "heapKBPerUnit": null
+    },
+    {
+      "op": "1 signal → 10.000 effect, 100 güncelleme",
+      "ms": 389.1,
+      "heapKBPerUnit": null
+    },
+    {
+      "op": "10 katmanlı computed zinciri, 100.000 güncelleme",
+      "ms": 421.8,
+      "heapKBPerUnit": null
+    }
+  ]
+}

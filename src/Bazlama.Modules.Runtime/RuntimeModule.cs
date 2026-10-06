@@ -17,6 +17,8 @@ public sealed record RuntimeApp(string Key, string Name, string Version, string?
 public sealed record EntityAccess(bool CanRead, bool CanWrite);
 public sealed record CreateRequest(JsonElement Values, Guid? ParentId);
 public sealed record UpdateRequest(JsonElement Values, int RowVersion);
+/// <summary>A form tool's call: the form as it is on the screen, and what the user entered in the modals it asked for (by modal key).</summary>
+public sealed record ToolRequest(JsonElement Values, Guid? Id, Guid? ParentId, Dictionary<string, JsonElement>? Inputs);
 
 /// <summary>/api/runtime: the installed apps a user may use, and their records.</summary>
 public static class RuntimeModule
@@ -89,6 +91,31 @@ public static class RuntimeModule
             return r.Status == DataStatus.Ok
                 ? Results.Ok(new { message = r.Message })
                 : Fail(new DataResult(r.Status, FieldErrors: r.FieldErrors, Errors: r.Errors));
+        });
+
+        // An item of a form's tools menu: a method of the form's code, on the form as it is on the
+        // screen. The answer is the form's new values, or a modal to show first (then the same
+        // call is made again with the modal's values among the inputs).
+        api.MapPost("/forms/{app}/{form}/tools/{method}", async (string app, string form, string method, ToolRequest r, FormToolRunner runner, CurrentSession current, OrgContextService org, CancellationToken ct) =>
+        {
+            // The user's organization options are read only when a modal's values came along.
+            OrganizationCheck? check = null;
+            if (r.Inputs is { Count: > 0 } && current.UserId is { } user)
+            {
+                var options = await org.OptionsAsync(user, ct);
+                check = (type, id) => type switch
+                {
+                    FieldType.Company => options.Any(c => c.Id == id),
+                    FieldType.Location => options.Any(c => c.Locations.Any(l => l.Id == id)),
+                    FieldType.Plant => options.Any(c => c.Locations.Any(l => l.Plants.Any(p => p.Id == id))),
+                    FieldType.Period => options.Any(c => c.Periods.Any(p => p.Id == id)),
+                    _ => true,
+                };
+            }
+            var o = await runner.RunAsync(app, form, method, r.Id, r.ParentId, r.Values, r.Inputs, check, ct);
+            return o.Status == DataStatus.Ok
+                ? Results.Ok(new { values = o.Values, titles = o.Titles, message = o.Message, save = o.Save, modal = o.Modal })
+                : Fail(new DataResult(o.Status, FieldErrors: o.FieldErrors, Errors: o.Errors));
         });
 
         return endpoints;

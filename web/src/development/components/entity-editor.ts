@@ -2,7 +2,8 @@ import { computed, define, flush, html, prop, repeat, signal, untrack } from "@b
 import { dialogs, icon } from "@bazlama/headless"
 import { titleField, type AppDef, type EntityDef, type FieldDef, type FieldType } from "../../runtime/api"
 import type { DraftStore } from "../draft"
-import { keyOk, SCOPES, toKey, TYPES, typeLabel } from "../meta"
+import { removeField as removeFromForm, renameField as renameInForm } from "../form-edit"
+import { keyOk, SCOPES, toKey, TYPE_ICONS, TYPES, typeLabel } from "../meta"
 
 /*
  * <bazlama-entity-editor .store=${draft} entity="siparis"> — an entity of the draft: its fields
@@ -14,18 +15,6 @@ import { keyOk, SCOPES, toKey, TYPES, typeLabel } from "../meta"
 /** The entity itself in the field list (field keys never start with "@"). */
 const ENTITY = "@entity"
 
-const TYPE_ICONS: Record<FieldType, string> = {
-  text: "edit",
-  longText: "file-text",
-  integer: "chart",
-  decimal: "chart",
-  date: "calendar",
-  dateTime: "clock",
-  boolean: "check",
-  choice: "list",
-  reference: "external-link",
-}
-
 export const EntityEditor = define("bazlama-entity-editor", {
   props: {
     store: prop.object<DraftStore | null>(null),
@@ -34,6 +23,8 @@ export const EntityEditor = define("bazlama-entity-editor", {
     openCode: prop.object<((entity: string) => void) | null>(null),
     /** "Form": opens the entity's first form, or creates one. */
     openForm: prop.object<((entity: string) => void) | null>(null),
+    /** "Üretilen sınıf": opens the class generated for the entity (read-only). */
+    openClass: prop.object<((entity: string) => void) | null>(null),
   },
   setup(props, { host }) {
     const store = props.store.peek()
@@ -71,8 +62,8 @@ export const EntityEditor = define("bazlama-entity-editor", {
       return k
     }
     /** A key change, carried to the lists, the forms and the title field. */
-    /** The sections of the entity's forms and its lists. */
-    const sectionsOf = (a: AppDef) => (a.forms ?? []).filter((f) => f.entity === entityKey).flatMap((f) => f.sections)
+    /** The entity's forms and its lists. */
+    const formsOf = (a: AppDef) => (a.forms ?? []).filter((f) => f.entity === entityKey)
     const listsOf = (a: AppDef) => (a.lists ?? []).filter((l) => l.entity === entityKey)
     const rename = (from: string, to: string) => {
       change((e, a) => {
@@ -82,7 +73,7 @@ export const EntityEditor = define("bazlama-entity-editor", {
           l.columns = l.columns.map((c) => (c === from ? to : c))
           if (l.sortField === from) l.sortField = to
         }
-        for (const s of sectionsOf(a)) s.fields = s.fields.map((c) => (c === from ? to : c))
+        for (const f of formsOf(a)) renameInForm(f, from, to)
       })
       selected.set(to)
     }
@@ -110,7 +101,7 @@ export const EntityEditor = define("bazlama-entity-editor", {
           l.columns = l.columns.filter((c) => c !== f.key)
           if (l.sortField === f.key) l.sortField = undefined
         }
-        for (const s of sectionsOf(a)) s.fields = s.fields.filter((x) => x !== f.key)
+        for (const form of formsOf(a)) removeFromForm(form, f.key)
       })
       select(next?.key ?? ENTITY)
     }
@@ -274,6 +265,7 @@ export const EntityEditor = define("bazlama-entity-editor", {
         <span class="spacer"></span>
         ${props.openForm() ? html`<bz-button size="sm" @click=${() => props.openForm()!(entityKey)}>${icon("dashboard")} Form</bz-button>` : null}
         ${props.openCode() ? html`<bz-button size="sm" @click=${() => props.openCode()!(entityKey)}>${icon("code")} Olay kodu</bz-button>` : null}
+        ${props.openClass() ? html`<bz-button size="sm" data-tooltip="Kodun gördüğü sınıf: alanların özellikleri ve seçim sabitleri (salt okunur)" @click=${() => props.openClass()!(entityKey)}>${icon("lock")} Üretilen sınıf</bz-button>` : null}
       </div>
       ${() =>
         errors().length

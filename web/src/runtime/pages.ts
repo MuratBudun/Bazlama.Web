@@ -8,6 +8,7 @@ import { contextText } from "../session"
 import {
   childrenOf,
   entityOf,
+  formOf,
   formSections,
   listColumns,
   listOf,
@@ -18,12 +19,13 @@ import {
   titleField,
   type AppDef,
   type DataRecord,
+  type FormToolDef,
   type EntityDef,
-  type FieldDef,
   type RuntimeApp,
   type RuntimeMenuItem,
 } from "./api"
-import { fieldEditor, gridColumns } from "./fields"
+import { fieldEditor, gridColumns, sectionsView } from "./fields"
+import { runTool } from "./modals"
 
 /*
  * Runtime: the installed apps, drawn from their metadata. /runtime → apps,
@@ -162,15 +164,8 @@ function formState(e: EntityDef, record: DataRecord | null) {
 }
 
 function formFields(app: AppDef, e: EntityDef, state: ReturnType<typeof formState>, readonly: boolean, sections = formSections(app, e)) {
-  const field = (key: string) => e.fields.find((f) => f.key === key)
-  return sections.map(
-    (s) => html`<bz-form-layout columns=${s.columns ?? 2} min-column-width="14rem">
-      ${s.title ? html`<h2 data-span="full" class="form-heading">${s.title}</h2>` : null}
-      ${s.fields
-        .map(field)
-        .filter((f): f is FieldDef => !!f)
-        .map((f) => fieldEditor({ app, field: f, value: state.values[f.key], titles: state.titles, error: () => state.errors()[f.key] ?? "", readonly }))}
-    </bz-form-layout>`,
+  return sectionsView(sections, e.fields, (f, span) =>
+    fieldEditor({ app, field: f, value: state.values[f.key], titles: state.titles, error: () => state.errors()[f.key] ?? "", readonly, span }),
   )
 }
 
@@ -188,6 +183,8 @@ export const recordPage = definePage({
       const formKey = ctx.query.get("form")
       const listPath = { path: `${runtimeConfig.base}/${app.key}/${e.key}`, query: { list: listKey } }
       const sections = formSections(app, e, formKey)
+      const form = formOf(app, e, formKey)
+      const tools = form?.tools ?? []
 
       const record = signal<DataRecord | null>(null)
       const error = signal("")
@@ -208,8 +205,11 @@ export const recordPage = definePage({
             : dialogs.confirm({ heading: "Kaydedilmemiş değişiklikler", message: "Değişiklikleriniz kaybolacak. Sayfadan çıkılsın mı?", confirmText: "Çık", cancelText: "Kal", variant: "danger" }),
         )
 
-        const save = async (ev: Event) => {
+        const save = (ev: Event) => {
           ev.preventDefault()
+          void store()
+        }
+        const store = async () => {
           busy.set(true)
           banner.set("")
           state.errors.set({})
@@ -243,6 +243,26 @@ export const recordPage = definePage({
             toast.error(errorText(err))
           }
         }
+        /**
+         * An item of the form's tools menu: the form as it is now (saved or not) goes to the
+         * method of the form's code; what it changed comes back into the form, unsaved.
+         */
+        const useTool = async (tool: FormToolDef) => {
+          if (tool.confirm && !(await dialogs.confirm({ heading: tool.label, message: tool.confirm, confirmText: tool.label, cancelText: "Vazgeç" }))) return
+          banner.set("")
+          state.errors.set({})
+          try {
+            const res = await runTool({ app, form: form!, tool, id: isNew ? null : id, values: state.snapshot() })
+            if (!res) return
+            for (const f of e.fields) if (res.values && f.key in res.values) state.values[f.key].set(res.values[f.key] ?? (f.type === "boolean" ? false : null))
+            if (res.titles) state.titles.update((t) => ({ ...t, ...res.titles }))
+            if (res.message) toast.success(res.message)
+            if (res.save && canWrite) await store()
+          } catch (err) {
+            if (err instanceof ApiError) state.errors.set(err.fieldErrors)
+            banner.set(errorText(err))
+          }
+        }
         const remove = () =>
           confirmAction({
             heading: `${e.name} sil`,
@@ -262,6 +282,15 @@ export const recordPage = definePage({
             <bz-button variant="ghost" size="sm" aria-label=${`${plural(e)} listesine dön`} @click=${() => void ctx.navigate(listPath)}>${icon("arrow-left")}</bz-button>
             <h1>${title}</h1><span class="muted small">${e.name}</span>
             <span class="spacer"></span>
+            ${tools.length
+              ? html`<bz-menu class="rt-tools" @select=${(ev: CustomEvent<{ value: string }>) => {
+                  const tool = tools[Number(ev.detail.value)]
+                  if (tool) void useTool(tool)
+                }}>
+                  <bz-button slot="trigger">${icon("settings")} Araçlar ${icon("chevron-down")}</bz-button>
+                  ${tools.map((t, i) => html`<bz-menu-item value=${String(i)} icon=${t.icon ?? null}>${t.label}</bz-menu-item>`)}
+                </bz-menu>`
+              : null}
             ${!isNew && canWrite ? (actions[e.key] ?? []).map((a) => html`<bz-button @click=${() => run(a)}>${a.icon ? icon(a.icon) : null} ${a.label}</bz-button>`) : null}
             ${!isNew && canWrite ? html`<bz-button variant="danger" @click=${remove}>${icon("trash")} Sil</bz-button>` : null}
           </div>

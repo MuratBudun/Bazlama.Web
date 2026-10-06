@@ -63,7 +63,9 @@ public static class AppCompiler
         "System.Runtime.CompilerServices.RuntimeHelpers", "System.Runtime.CompilerServices.Unsafe",
     ];
 
-    public static CompileOutput Compile(string assemblyName, IEnumerable<SourceFile> sources, IEnumerable<MetadataReference>? references = null, bool emit = true)
+    /// <param name="check">More checks on the compilation (an app's code against its definition).</param>
+    public static CompileOutput Compile(string assemblyName, IEnumerable<SourceFile> sources, IEnumerable<MetadataReference>? references = null, bool emit = true,
+        Func<CSharpCompilation, IEnumerable<CodeDiagnostic>>? check = null)
     {
         var parse = new CSharpParseOptions(LanguageVersion.Latest);
         var trees = sources.Select(s => CSharpSyntaxTree.ParseText(s.Content, parse, path: s.Path)).ToList();
@@ -78,6 +80,7 @@ public static class AppCompiler
             .Select(ToDiagnostic)
             .ToList();
         diagnostics.AddRange(ForbiddenApis(compilation, trees));
+        if (check is not null) diagnostics.AddRange(check(compilation));
 
         var failed = diagnostics.Any(d => d.Severity == "error");
         if (failed || !emit) return new CompileOutput(!failed, null, null, Sort(diagnostics));
@@ -94,7 +97,7 @@ public static class AppCompiler
     }
 
     static IReadOnlyList<CodeDiagnostic> Sort(List<CodeDiagnostic> list) =>
-        [.. list.DistinctBy(d => (d.Path, d.Line, d.Column, d.Code)).OrderBy(d => d.Path).ThenBy(d => d.Line).ThenBy(d => d.Column)];
+        [.. list.DistinctBy(d => (d.Path, d.Line, d.Column, d.Code, d.Message)).OrderBy(d => d.Path).ThenBy(d => d.Line).ThenBy(d => d.Column)];
 
     static CodeDiagnostic ToDiagnostic(Diagnostic d)
     {

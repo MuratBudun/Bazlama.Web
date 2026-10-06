@@ -114,6 +114,49 @@ Amaç tam bir IDE değil; bir app'i yazmaya yetecek kadar.
 
 **Paketleme:** Monaco yalnızca Development alanında, ilk açılışta tembel (lazy) yüklenir; sadece editör çekirdeği ve C# dili alınır, diğer diller ve worker'lar pakete girmez. Runtime ve Management sıfır bağımlılık ilkesini korur.
 
+## Form, modal ve sayfa tasarımı
+
+Üç tanım türü, tek tasarımcı yapısı (palet | tuval | özellik düzenleyici):
+
+- **Form:** mutlaka bir entity'ye bağlıdır, onun bir kaydını düzenler. Palet o entity'nin alanlarını sunar (her alan forma en fazla bir kez konur) ve "Bölüm" bileşenini. Yerleşim modeli: bölüm (başlık, 1–3 sütun) + alanlar; alan başına genişlik (`span`: bölümün kaç sütununu kaplar, `bz-form-layout`'un `data-span`'ı). Tanımda alan, anahtarı ya da `{ "field": "aciklama", "span": 2 }` olarak yazılır. Etiket, tip ve zorunluluk entity'dedir; form yalnız yeri ve genişliği belirler. ✅ Tasarımcı yapıldı (tıklama, sürükle-bırak, klavye; Kod görünümü aynı tanımın JSON'u).
+- **Modal:** entity'den bağımsız, kendi alanları olan, yeniden kullanılabilir popup tanımı (ör. tarih aralığı ve firma/lokasyon/dönem seçimi). Bir kez tanımlanır (`modals[]`), birçok yerden çağrılır. Alan tipleri entity'ninkiler ve yalnız modallarda bulunan kurum seçicileri: `company`, `location`, `plant`, `period` (kullanıcının çalışabildikleri; lokasyon seçili firmaya, plant seçili lokasyona göre süzülür, modalda o alan yoksa çalışma bağlamına göre). Yerleşim formdaki gibidir (bölüm + `span`). ✅ Tanım, tasarımcı (palet alan tipleri sunar; alan modalın kendisinindir, özellikleri orada düzenlenir) ve form araçlarından çağrı yapıldı. ⏳ Sayfa, liste, rapor ve job'dan çağrı o tanımlar gelince.
+- **Page:** entity'ye bağlı olmayan, tamamen bağımsız sayfa (ör. dashboard); menüden açılır. Ayrıntısı sonra ele alınacak; ilk sürüm yalnız bir başlangıç. ⏳ Yapılacak.
+
+Koşullu davranış (duruma göre salt okunur / gizli alan, bölüm) iş akışı fazında ele alınacak.
+
+### Formun araçları ve modalların kodu
+
+**Araçlar menüsü.** Formun kendi eylemleri vardır: tanımda `tools[]` (ad, ikon, metot, isteğe bağlı onay sorusu), kayıt formunda "Araçlar" menüsü. Her öğe formun kod sınıfındaki bir metodu çağırır:
+
+```csharp
+[Form("siparis")]
+public class SiparisFormu : FormCode<Siparis>
+{
+    public async Task<ActionResult> MusteriOzeti(Siparis record, IAppContext context)
+    {
+        var aralik = await context.Modals.ShowAsync<TarihAraligi>();   // modal açılır, değerleri döner
+        record.Aciklama = $"{aralik.Baslangic:d} – {aralik.Bitis:d}";    // forma geri yazılır
+        return ActionResult.Ok("Hazır.");
+    }
+}
+```
+
+- Metoda **formun ekrandaki hali** verilir: kaydedilmemiş değişiklikler dahil, yeni kayıtta `Id` boştur. Metodun değiştirdiği alanlar forma geri yazılır ama **kaydedilmez**; `ActionResult.Save` dönerse form olağan yoldan kaydedilir (doğrulama ve olaylar çalışır). `ActionResult.Fail` formun üstünde gösterilir.
+- Kayıt eylemlerinden (`RecordAction<T>`, formdaki düğmeler) farkı: eylem kaydedilmiş kaydı veritabanından alır ve değiştirir; araç ekrandaki formla çalışır.
+- Yalnız formun menüsünde tanımlı metotlar çağrılabilir. Derleme tanımı da denetler (**BZ0003**): `[Form]` var olan bir formu ve o formun entity'sini göstermeli, her aracın metodu (`(Kayıt record, IAppContext context)`) bulunmalı. Aracı olan tanım kodsuz yayınlanamaz.
+
+**Modal çağrısı.** Kod modalı `context.Modals` ile açar: uygulama kodu üretilen sınıfla (`ShowAsync<TarihAraligi>(m => m.Baslangic = …)`), uygulamanın sınıflarını bilmeyen **kod kütüphanesi** anahtarla (`ShowAsync("tarih_araligi", başlangıçDeğerleri)` → alan anahtarıyla değerler). Her modal için `_Entities.g.cs` içinde bir sınıf üretilir (`[Modal("tarih_araligi")] class TarihAraligi : ModalValues`).
+
+**Modalın kendi kodu.** `ModalCode<T>` sınıfı: `OpenAsync` açılış değerlerini verir, `ValidateAsync` kullanıcı onayladığında denetler (hata eklenirse modal açık kalır). Zorunlu alanları ve kurum seçimlerinin yetkisini motor denetler.
+
+**Nasıl çalışır (yeniden çalıştırma).** Sunucudaki kod kullanıcıyı beklemez. `ShowAsync` ilk çağrıda çalışmayı keser ve istemciye "şu modalı göster" yanıtı gider; kullanıcı onaylayınca aynı metot **baştan** çalışır, bu kez `ShowAsync` girilen değerleri döner. Sonuçları:
+- `ShowAsync`'ten önceki kod iki kez çalışır; orada yan etki olmamalı (kayıt okumak sorun değil; uygulama kodu zaten yalnız okuyabilir).
+- Aynı çalıştırmada aynı modal iki kez sorulursa ikisi de aynı yanıtı alır.
+- Kullanıcı vazgeçerse metot yeniden çalışmaz.
+- Kaydetme ve silme olaylarında (bekleyen bir kullanıcı yok) `ShowAsync` hata verir.
+
+API: `POST /api/runtime/forms/{app}/{form}/tools/{metot}` gövdesi `{ values, id?, parentId?, inputs: { <modal>: { … } } }`; yanıt `{ values, titles, message, save }` ya da `{ modal: { key, values, fieldErrors, errors } }`.
+
 ## Versiyon, paket, export/import
 
 **Akış:** Development'ta taslak → **publish** değiştirilemez versiyon (semver) → **export** `.bzapp` → başka kurulumda **import**.

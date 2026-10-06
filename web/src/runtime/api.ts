@@ -2,7 +2,10 @@ import { signal } from "@bazlama/core"
 import { api } from "../api"
 
 /** App metadata as the server serves it (Bazlama.Engine.Metadata, camelCase JSON). */
-export type FieldType = "text" | "longText" | "integer" | "decimal" | "date" | "dateTime" | "boolean" | "choice" | "reference"
+export type FieldType =
+  | "text" | "longText" | "integer" | "decimal" | "date" | "dateTime" | "boolean" | "choice" | "reference"
+  // Organization pickers, in modals only: one of the user's companies, locations, plants or periods.
+  | "company" | "location" | "plant" | "period"
 
 export interface FieldDef {
   key: string
@@ -46,17 +49,43 @@ export interface MenuItemDef {
   form?: string
   items?: MenuItemDef[]
 }
+/** A field on a form: its key, or the key with how it is laid out ({ field, span }). */
+export type FormItem = string | { field: string; span?: number }
 export interface FormSection {
   title?: string
-  fields: string[]
+  fields: FormItem[]
   columns?: number
 }
+export const itemKey = (item: FormItem) => (typeof item === "string" ? item : item.field)
+/** Columns the field takes, when the form says so (otherwise the field's type decides). */
+export const itemSpan = (item: FormItem) => (typeof item === "string" ? undefined : item.span)
+/** The shortest way to write it: the key alone when nothing else is set. */
+export const formItem = (field: string, span?: number): FormItem => (span ? { field, span } : field)
 /** A record form of an entity. An entity may have several forms, or none. */
 export interface FormDef {
   key: string
   name: string
   entity: string
   sections: FormSection[]
+  /** The form's tools menu ("Araçlar"). */
+  tools?: FormToolDef[]
+}
+/** An item of a form's tools menu: it calls a method of the form's code with the form as it is on the screen. */
+export interface FormToolDef {
+  label: string
+  icon?: string
+  method: string
+  /** A question asked before it runs. */
+  confirm?: string
+}
+/** A popup with fields of its own, opened by code (a form's tools). */
+export interface ModalDef {
+  key: string
+  name: string
+  fields: FieldDef[]
+  sections?: FormSection[]
+  /** The text of the button that accepts it (default "Tamam"). */
+  okText?: string
 }
 export interface AppDef {
   key: string
@@ -68,6 +97,7 @@ export interface AppDef {
   forms?: FormDef[]
   lists?: ListDef[]
   menu?: MenuItemDef[]
+  modals?: ModalDef[]
 }
 export interface RuntimeAppInfo {
   key: string
@@ -145,10 +175,35 @@ export function listOf(app: AppDef, e: EntityDef, key?: string | null): Omit<Lis
 }
 export const listColumns = (app: AppDef, e: EntityDef, key?: string | null) => listOf(app, e, key).columns
 export const formsOf = (app: AppDef, e: EntityDef) => (app.forms ?? []).filter((f) => f.entity === e.key)
-/** The sections a record is shown with: the given form, else the entity's first form, else all fields in one section. */
+/** The form a record is shown in: the given one, else the entity's first form (it may have none). */
+export const formOf = (app: AppDef, e: EntityDef, form?: string | null): FormDef | undefined =>
+  (form ? app.forms?.find((x) => x.key === form && x.entity === e.key) : undefined) ?? formsOf(app, e)[0]
+/** The sections a record is shown with: the form's, else all fields in one section. */
 export const formSections = (app: AppDef, e: EntityDef, form?: string | null): FormSection[] => {
-  const f = (form ? app.forms?.find((x) => x.key === form && x.entity === e.key) : undefined) ?? formsOf(app, e)[0]
+  const f = formOf(app, e, form)
   return f?.sections.length ? f.sections : [{ fields: e.fields.map((x) => x.key) }]
+}
+/** The sections a modal is shown with: its own, else all fields in one section. */
+export const modalSections = (m: ModalDef): FormSection[] =>
+  m.sections?.length ? m.sections : [{ fields: m.fields.map((f) => f.key), columns: m.fields.length > 1 ? 2 : 1 }]
+
+/** A modal the code asked for: what it starts with and, after a refused attempt, what was wrong. */
+export interface ModalPrompt {
+  key: string
+  values: Record<string, unknown>
+  titles?: Record<string, string | null> | null
+  fieldErrors?: Record<string, string> | null
+  errors?: string[] | null
+}
+/** What a form tool did: the form's values after it, or a modal to show first. */
+export interface ToolResult {
+  values: Record<string, unknown> | null
+  /** Titles of the records the changed reference fields now hold. */
+  titles: Record<string, string | null> | null
+  message: string | null
+  /** The tool asks for the form to be saved. */
+  save: boolean
+  modal: ModalPrompt | null
 }
 
 const dataPath = (app: string, entity: string) => `/runtime/data/${app}/${entity}`
@@ -172,4 +227,7 @@ export const records = {
   delete: (app: string, entity: string, id: string) => api.delete(`${dataPath(app, entity)}/${id}`),
   action: (app: string, entity: string, id: string, action: string) =>
     api.post<{ message: string | null }>(`${dataPath(app, entity)}/${id}/actions/${encodeURIComponent(action)}`),
+  /** A form tool, on the form as it is on the screen; `inputs`: what the user entered in the modals it asked for. */
+  tool: (app: string, form: string, method: string, body: { values: Record<string, unknown>; id: string | null; parentId: string | null; inputs: Record<string, Record<string, unknown>> }) =>
+    api.post<ToolResult>(`/runtime/forms/${app}/${form}/tools/${encodeURIComponent(method)}`, body),
 }

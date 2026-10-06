@@ -71,4 +71,26 @@ describe("draft parts (code view)", () => {
     expect(d.icon).toBe("cart")
     expect(d.entities).toHaveLength(3)
   })
+
+  it("describes modals with their own fields and a form's tools", () => {
+    const d = app()
+    d.modals = [{ key: "aralik", name: "Aralık", fields: [{ key: "firma", label: "Firma", type: "company" }, { key: "gun", label: "Gün", type: "date" }] }]
+    const part = parts.modal("aralik")
+    const modal = props(part.schema(d))
+    const types = props((modal.fields as { items: unknown }).items).type.enum as string[]
+    expect(types).toEqual(expect.arrayContaining(["date", "company", "location", "plant", "period"]))
+    // Organization pickers are for modals only.
+    expect(props((props(parts.entity("siparis").schema(d)).fields as { items: unknown }).items).type.enum).not.toContain("company")
+    // The layout offers the modal's own fields.
+    const item = (props((modal.sections as { items: unknown }).items).fields.items as { anyOf: Obj[] }).anyOf[0]
+    expect(item.enum).toEqual(["firma", "gun"])
+
+    part.set(d, { ...d.modals[0], okText: "Göster" })
+    expect(d.modals[0].okText).toBe("Göster")
+    expect(part.lockedKey!(d)).toBe("aralik")
+
+    const tool = props((props(parts.form("siparis").schema(d)).tools as { items: unknown }).items)
+    expect(Object.keys(tool)).toEqual(["label", "icon", "method", "confirm"])
+    expect(props(parts.definition().schema(d)).modals).toBeDefined()
+  })
 })

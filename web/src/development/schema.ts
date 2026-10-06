@@ -1,9 +1,9 @@
-import type { AppDef, EntityDef, FormDef, ListDef, MenuItemDef } from "../runtime/api"
-import { SCOPES, TYPES } from "./meta"
+import type { AppDef, EntityDef, FieldDef, FormDef, ListDef, MenuItemDef, ModalDef } from "../runtime/api"
+import { MODAL_TYPES, SCOPES, TYPES } from "./meta"
 
 /*
  * The code view of the designers: each part of a draft (the app, an entity, a list, a form,
- * the menu, or the whole definition) as JSON, with a JSON schema made from the current draft.
+ * a modal, the menu, or the whole definition) as JSON, with a JSON schema made from the current draft.
  * The schema does the completion and the checking in Monaco: field types, scopes, and the keys
  * that exist (a list's columns are its entity's fields, a menu item opens an existing list…).
  * The server's validator stays the judge; this only helps while typing.
@@ -34,7 +34,7 @@ const fieldLabels = (e: EntityDef | undefined) => e?.fields.map((f) => f.label) 
 
 // ── Schemas ──────────────────────────────────────────────────────────────
 
-function fieldSchema(d: AppDef): Schema {
+function fieldSchema(d: AppDef, types = TYPES): Schema {
   return {
     type: "object",
     required: ["key", "label", "type"],
@@ -42,7 +42,7 @@ function fieldSchema(d: AppDef): Schema {
     properties: {
       key: { ...KEY, description: "Alanın anahtarı (kolon adı olur). Yayınlanmış bir alanın anahtarı değişmez." },
       label: { type: "string", description: "Formda ve listede görünen ad." },
-      type: choose(TYPES.map((t) => t.value), "Alanın tipi.", TYPES.map((t) => t.label)),
+      type: choose(types.map((t) => t.value), "Alanın tipi.", types.map((t) => t.label)),
       required: { type: "boolean", description: "Zorunlu alan." },
       hint: { type: "string", description: "Alanın altında görünen yardım metni." },
       maxLength: { type: "integer", minimum: 1, maximum: 4000, description: "Metin: en fazla karakter (varsayılan 200)." },
@@ -102,6 +102,43 @@ function listSchema(d: AppDef, l: ListDef | undefined): Schema {
   }
 }
 
+/** Sections of fields: a form's (the entity's fields) or a modal's (its own). */
+function sectionsSchema(fields: FieldDef[] | undefined, description: string): Schema {
+  const keys = fields?.map((f) => f.key) ?? []
+  const labels = fields?.map((f) => f.label) ?? []
+  return {
+    type: "array",
+    description,
+    items: {
+      type: "object",
+      required: ["fields"],
+      additionalProperties: false,
+      properties: {
+        title: { type: "string", description: "Bölüm başlığı." },
+        columns: { type: "integer", minimum: 1, maximum: 3, description: "Sütun sayısı (varsayılan 2)." },
+        fields: {
+          type: "array",
+          description: "Bölümdeki alanlar: alanın anahtarı, ya da genişliğiyle birlikte { field, span }.",
+          items: {
+            anyOf: [
+              choose(keys, "Alan.", labels),
+              {
+                type: "object",
+                required: ["field"],
+                additionalProperties: false,
+                properties: {
+                  field: choose(keys, "Alan.", labels),
+                  span: { type: "integer", minimum: 1, maximum: 3, description: "Bölümün kaç sütununu kaplar (yoksa 1; uzun metin tam satır)." },
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  }
+}
+
 function formSchema(d: AppDef, f: FormDef | undefined): Schema {
   const e = entityOf(d, f?.entity)
   return {
@@ -112,20 +149,37 @@ function formSchema(d: AppDef, f: FormDef | undefined): Schema {
       key: { ...KEY, description: "Form anahtarı. Burada değiştirilemez." },
       name: { type: "string", description: "Formun adı." },
       entity: choose(masters(d).map((x) => x.key), "Formun kayıtlarını düzenlediği entity.", masters(d).map((x) => x.name)),
-      sections: {
+      sections: sectionsSchema(e?.fields, "Bölümler; detay entity'ler bölümlerin altında listelenir."),
+      tools: {
         type: "array",
-        description: "Bölümler; detay entity'ler bölümlerin altında listelenir.",
+        description: "Formun Araçlar menüsü: her öğe formun kod sınıfındaki bir metodu çağırır.",
         items: {
           type: "object",
-          required: ["fields"],
+          required: ["label", "method"],
           additionalProperties: false,
           properties: {
-            title: { type: "string", description: "Bölüm başlığı." },
-            columns: { type: "integer", minimum: 1, maximum: 4, description: "Sütun sayısı (varsayılan 2)." },
-            fields: { type: "array", uniqueItems: true, description: "Bölümdeki alanlar.", items: choose(fieldKeys(e), "Alan.", fieldLabels(e)) },
+            label: { type: "string", description: "Menüde görünen ad." },
+            icon: ICON,
+            method: { type: "string", pattern: "^[A-Za-z_][A-Za-z0-9_]*$", description: "Formun kod sınıfındaki ([Form(\"anahtar\")] … : FormCode<T>) metot." },
+            confirm: { type: "string", description: "Çalıştırmadan önce sorulan soru." },
           },
         },
       },
+    },
+  }
+}
+
+function modalSchema(d: AppDef, m: ModalDef | undefined): Schema {
+  return {
+    type: "object",
+    required: ["key", "name", "fields"],
+    additionalProperties: false,
+    properties: {
+      key: { ...KEY, description: "Modal anahtarı (kodda sınıf adı olur). Burada değiştirilemez." },
+      name: { type: "string", description: "Modalın adı (pencerenin başlığı)." },
+      fields: { type: "array", description: "Modalın kendi alanları.", items: fieldSchema(d, MODAL_TYPES) },
+      sections: sectionsSchema(m?.fields, "Bölümler (yoksa bütün alanlar tek bölümde)."),
+      okText: { type: "string", description: "Onay düğmesinin metni (varsayılan Tamam)." },
     },
   }
 }
@@ -174,6 +228,7 @@ function definitionSchema(d: AppDef): Schema {
       entities: { type: "array", items: entitySchema(d, undefined) },
       lists: { type: "array", items: listSchema(d, undefined) },
       forms: { type: "array", items: formSchema(d, undefined) },
+      modals: { type: "array", items: modalSchema(d, undefined) },
       menu: { ...menu, definitions: undefined },
     },
   }
@@ -219,6 +274,13 @@ export const parts = {
     get: (d) => d.forms?.find((f) => f.key === key),
     set: (d, v) => replaceKeyed(d.forms, key, v as FormDef),
     schema: (d) => formSchema(d, d.forms?.find((f) => f.key === key)),
+    lockedKey: () => key,
+  }),
+  modal: (key: string): DraftPart => ({
+    id: `modal-${key}`,
+    get: (d) => d.modals?.find((m) => m.key === key),
+    set: (d, v) => replaceKeyed(d.modals, key, v as ModalDef),
+    schema: (d) => modalSchema(d, d.modals?.find((m) => m.key === key)),
     lockedKey: () => key,
   }),
   menu: (): DraftPart => ({

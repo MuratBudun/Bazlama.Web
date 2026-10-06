@@ -1,0 +1,242 @@
+{
+  "chrome": "Chrome/154.0.8037.58",
+  "base": "http://127.0.0.1:5420",
+  "throttle": 1,
+  "variant": [],
+  "loads": [
+    {
+      "name": "Ana sayfa, soğuk (önbellek yok)",
+      "painted": 64.9,
+      "fcp": 72,
+      "requests": 8,
+      "transferKB": 378.6,
+      "jsKB": 266.7,
+      "api": 11,
+      "script": 14.2,
+      "style": 7.4,
+      "layout": 1.8
+    },
+    {
+      "name": "Ana sayfa, sıcak (önbellekten)",
+      "painted": 42.6,
+      "fcp": 56,
+      "requests": 8,
+      "transferKB": 0.8,
+      "jsKB": 266.7,
+      "api": 10.2,
+      "script": 11.6,
+      "style": 4.7,
+      "layout": 1.3
+    },
+    {
+      "name": "Doğrudan liste linki, sıcak (50 satır)",
+      "painted": 177.2,
+      "fcp": 72,
+      "requests": 11,
+      "transferKB": 0.8,
+      "jsKB": 266.7,
+      "api": 22.5,
+      "script": 39.9,
+      "style": 46.9,
+      "layout": 14.1
+    },
+    {
+      "name": "Doğrudan kayıt linki, sıcak (400 kalem)",
+      "painted": 399.1,
+      "fcp": 64,
+      "requests": 11,
+      "transferKB": 0.8,
+      "jsKB": 266.7,
+      "api": 23.5,
+      "script": 84.6,
+      "style": 160.1,
+      "layout": 56.4
+    }
+  ],
+  "actions": [
+    {
+      "name": "Karttan uygulama sekmesi açma",
+      "painted": 13,
+      "api": 0,
+      "script": 4.3,
+      "style": 4.4,
+      "layout": 1.8,
+      "client": 13
+    },
+    {
+      "name": "Menüden liste (Müşteriler, 50 satır)",
+      "painted": 63.4,
+      "api": 9,
+      "script": 12.2,
+      "style": 30.3,
+      "layout": 8.2,
+      "client": 54.4
+    },
+    {
+      "name": "Listeden listeye (Siparişler, 50 satır)",
+      "painted": 34.3,
+      "api": 0,
+      "script": 8.8,
+      "style": 17.1,
+      "layout": 4,
+      "client": 34.3
+    },
+    {
+      "name": "Kayıt formu (7 kalem)",
+      "painted": 68.5,
+      "api": 6.8,
+      "script": 12.9,
+      "style": 31.4,
+      "layout": 7.2,
+      "client": 61.7
+    },
+    {
+      "name": "Kayıt formu (120 kalem, tam çizim)",
+      "painted": 151,
+      "api": 9.5,
+      "script": 24.8,
+      "style": 70.7,
+      "layout": 18.9,
+      "client": 141.5
+    },
+    {
+      "name": "Kayıt formu (400 kalem, sanal kaydırma)",
+      "painted": 320.4,
+      "api": 11.9,
+      "script": 56,
+      "style": 156.2,
+      "layout": 52.7,
+      "client": 308.5
+    },
+    {
+      "name": "Kayıttan listeye dönüş",
+      "painted": 68.6,
+      "api": 12,
+      "script": 13.5,
+      "style": 32.7,
+      "layout": 8.5,
+      "client": 56.6
+    },
+    {
+      "name": "Sekme: uygulama → ana sayfa",
+      "painted": 14.5,
+      "api": 0,
+      "script": 3.2,
+      "style": 4.3,
+      "layout": 0.9,
+      "client": 14.5
+    },
+    {
+      "name": "Sekme: ana sayfa → uygulama (canlı içerik)",
+      "painted": 41,
+      "api": 0,
+      "script": 8.5,
+      "style": 21.5,
+      "layout": 7.1,
+      "client": 41
+    },
+    {
+      "name": "Liste sıralama (sunucuda, 50 satır)",
+      "painted": 28.4,
+      "api": 3.4,
+      "script": 4.6,
+      "style": 9.5,
+      "layout": 4,
+      "client": 25
+    },
+    {
+      "name": "Kalem düzenleme diyaloğu açma",
+      "painted": 21.4,
+      "api": 0,
+      "script": 3.5,
+      "style": 12.7,
+      "layout": 1.6,
+      "client": 21.4
+    },
+    {
+      "name": "Alan değişimi: Yönetim › Kullanıcılar",
+      "painted": 33.1,
+      "api": 5.7,
+      "script": 10.4,
+      "style": 12.4,
+      "layout": 2.8,
+      "client": 27.4
+    },
+    {
+      "name": "Alan değişimi: Uygulamalar (ana sayfa)",
+      "painted": 13.4,
+      "api": 0,
+      "script": 6.2,
+      "style": 3.8,
+      "layout": 0.9,
+      "client": 13.4
+    },
+    {
+      "name": "Geliştirme: çalışma alanını açma (ilk)",
+      "painted": 110.9,
+      "script": 34.2,
+      "style": 23.8,
+      "layout": 17
+    },
+    {
+      "name": "C# dosyası açma (ilk: Monaco yüklenir)",
+      "painted": 499.4,
+      "script": 198.8,
+      "style": 41.5,
+      "layout": 49
+    },
+    {
+      "name": "C# dosyası açma (ikinci dosya)",
+      "painted": 92.1,
+      "script": 34.4,
+      "style": 45.8,
+      "layout": 5
+    },
+    {
+      "name": "Entity tasarımcısı sekmesi açma",
+      "painted": 72.5,
+      "script": 16.4,
+      "style": 10.2,
+      "layout": 31.9
+    },
+    {
+      "name": "Tasarım → Kod görünümü (JSON, ilk)",
+      "painted": 62.4,
+      "script": 13.9,
+      "style": 30.2,
+      "layout": 3.6
+    },
+    {
+      "name": "Form tasarımcısı sekmesi açma",
+      "painted": 65.7,
+      "script": 20.1,
+      "style": 27.1,
+      "layout": 14
+    }
+  ],
+  "typing": {
+    "chars": 150,
+    "typed": 159,
+    "scriptPerKey": 0.074,
+    "stylePerKey": 0.006,
+    "layoutPerKey": 0.556,
+    "taskPerKey": 1.847,
+    "layoutsPerKey": 1,
+    "wallPerKey": 2.31
+  },
+  "memory": [
+    {
+      "name": "Geliştirme: çalışma alanı (Monaco'dan önce)",
+      "heapMB": 3.09,
+      "nodes": 2963,
+      "listeners": 236
+    },
+    {
+      "name": "Geliştirme: Monaco + 2 C# + JSON + tasarımcılar",
+      "heapMB": 17.04,
+      "nodes": 6294,
+      "listeners": 905
+    }
+  ],
+  "leaks": []
+}

@@ -437,6 +437,21 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
     /// </summary>
     (Dictionary<string, object?> Values, Dictionary<string, string> Errors) Parse(EntityDefinition entity, JsonElement json, Dictionary<string, object?>? existing)
     {
+        var (values, errors) = ParseFields(entity.Fields, json, existing);
+        // App code may still fill required fields (BeforeSave); only when the save stops here
+        // anyway are the missing ones reported with the other errors.
+        if (errors.Count > 0)
+            foreach (var f in entity.Fields.Where(f => f.Required && !errors.ContainsKey(f.Key) && values.GetValueOrDefault(f.Key) is null))
+                errors[f.Key] = "Zorunlu alan.";
+        return (values, errors);
+    }
+
+    /// <summary>
+    /// Field values from JSON, as the CLR values the engine works with (a form's or a modal's
+    /// fields). Fields not sent take <paramref name="existing"/>'s value, else null.
+    /// </summary>
+    public static (Dictionary<string, object?> Values, Dictionary<string, string> Errors) ParseFields(IReadOnlyList<FieldDefinition> fields, JsonElement json, Dictionary<string, object?>? existing = null)
+    {
         var values = new Dictionary<string, object?>();
         var errors = new Dictionary<string, string>();
         if (json.ValueKind != JsonValueKind.Object)
@@ -444,7 +459,7 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
             errors[""] = "Kayıt bir JSON nesnesi olmalı.";
             return (values, errors);
         }
-        foreach (var f in entity.Fields)
+        foreach (var f in fields)
         {
             object? value;
             if (json.TryGetProperty(f.Key, out var el))
@@ -459,11 +474,6 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
             else value = existing?.GetValueOrDefault(f.Key);
             values[f.Key] = value;
         }
-        // App code may still fill required fields (BeforeSave); only when the save stops here
-        // anyway are the missing ones reported with the other errors.
-        if (errors.Count > 0)
-            foreach (var f in entity.Fields.Where(f => f.Required && !errors.ContainsKey(f.Key) && values.GetValueOrDefault(f.Key) is null))
-                errors[f.Key] = "Zorunlu alan.";
         return (values, errors);
     }
 
@@ -507,7 +517,7 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
                 case FieldType.Boolean:
                     value = el.ValueKind switch { JsonValueKind.True => true, JsonValueKind.False => false, _ => bool.Parse(el.GetString()!) };
                     return null;
-                case FieldType.Reference:
+                case FieldType.Reference or FieldType.Company or FieldType.Location or FieldType.Plant or FieldType.Period:
                     value = el.GetGuid();
                     return null;
             }
@@ -522,6 +532,7 @@ public sealed class DataService(KernelDbContext db, SqlDialect d, AppRegistry re
                 FieldType.DateTime => "Tarih ve saat girin.",
                 FieldType.Boolean => "Evet ya da hayır seçin.",
                 FieldType.Reference => "Geçerli bir kayıt seçin.",
+                FieldType.Company or FieldType.Location or FieldType.Plant or FieldType.Period => "Listeden seçin.",
                 _ => "Geçersiz değer.",
             };
         }

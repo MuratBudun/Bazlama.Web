@@ -194,6 +194,25 @@ export const Workbench = define("bazlama-workbench", {
     const errors = computed(() => problems().filter((p) => p.severity === "error").length)
     const warnings = computed(() => problems().length - errors())
 
+    // The problems panel opens and closes; closed, a bar below the editors keeps the counts in
+    // view (red while there are errors). The split owns the state (it keeps it with the size).
+    const problemsOpen = signal(true)
+    let problemsSplit: (HTMLElement & { collapsed: boolean }) | undefined
+    const splitRef = (el: HTMLElement) => {
+      problemsSplit = el as HTMLElement & { collapsed: boolean }
+      // The split reads its saved state when it connects.
+      queueMicrotask(() => problemsOpen.set(!problemsSplit!.collapsed))
+    }
+    const showProblems = (open: boolean) => {
+      if (problemsSplit) problemsSplit.collapsed = !open
+      problemsOpen.set(open)
+    }
+    /** The counts as badges: coloured only while there is something to see. */
+    const counts = () => html`<span class="wb-counts">
+      <bz-badge variant=${errors() ? "danger" : "neutral"}>${icon("alert", { size: 12 })} ${errors()} hata</bz-badge>
+      <bz-badge variant=${warnings() ? "warning" : "neutral"}>${icon("info", { size: 12 })} ${warnings()} uyarı</bz-badge>
+    </span>`
+
     return html`
       <bz-split size="260" min="180" collapsible persist=${`bazlama-wb-explorer`} label="Gezgini boyutlandır">
         <section class="wb-explorer" aria-label=${model.label}>
@@ -204,7 +223,9 @@ export const Workbench = define("bazlama-workbench", {
               expanded.update((x) => (e.detail.expanded ? [...new Set([...x, e.detail.id])] : x.filter((i) => i !== e.detail.id)))}
             @activate=${(e: CustomEvent<{ id: string }>) => openTab(e.detail.id)}></bz-tree>
         </section>
-        <bz-split orientation="vertical" primary="end" size="160" min="72" collapsible persist="bazlama-wb-problems" label="Sorunlar panelini boyutlandır">
+        <div class="wb-main">
+        <bz-split orientation="vertical" primary="end" size="160" min="72" collapsible persist="bazlama-wb-problems" label="Sorunlar panelini boyutlandır" ref=${splitRef}
+          @toggle=${(e: CustomEvent<{ collapsed: boolean }>) => problemsOpen.set(!e.detail.collapsed)}>
           <div class="wb-editors">
             ${() => (open().length ? null : html`<div class="wb-empty muted">Gezginden bir entity ya da dosya açın.</div>`)}
             <bz-tabs fill ?hidden=${() => open().length === 0} .value=${current} ref=${(t: HTMLElement) => (tabsEl = t)}
@@ -217,8 +238,10 @@ export const Workbench = define("bazlama-workbench", {
           <section class="wb-problems" aria-label="Sorunlar">
             <header class="wb-head">
               <strong>Sorunlar</strong>
-              ${() => html`<span class="muted small">${errors()} hata · ${warnings()} uyarı</span>`}
+              ${() => counts()}
               ${() => (model.checking?.() ? html`<span class="muted small">denetleniyor…</span>` : null)}
+              <span class="spacer"></span>
+              <bz-button size="sm" variant="ghost" aria-label="Sorunlar panelini kapat" data-tooltip="Kapat" @click=${() => showProblems(false)}>${icon("chevron-down")}</bz-button>
             </header>
             <ul>
               ${() =>
@@ -231,6 +254,14 @@ export const Workbench = define("bazlama-workbench", {
             </ul>
           </section>
         </bz-split>
+        ${() =>
+          problemsOpen()
+            ? null
+            : html`<button type="button" class="wb-problems-bar" data-errors=${() => String(errors() > 0)} aria-expanded="false" @click=${() => showProblems(true)}>
+                <strong>Sorunlar</strong>${() => counts()}${() => (model.checking?.() ? html`<span class="muted small">denetleniyor…</span>` : null)}
+                <span class="spacer"></span>${icon("chevron-up", { size: 14 })}
+              </button>`}
+        </div>
       </bz-split>
     `
   },

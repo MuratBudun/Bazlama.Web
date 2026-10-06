@@ -24,6 +24,8 @@ public sealed class AppDefinition
     public IReadOnlyList<ListDefinition> Lists { get; init; } = [];
     /// <summary>The app's menu: groups and items that open a list or a new record's form. Empty: one item per master entity.</summary>
     public IReadOnlyList<MenuItem> Menu { get; init; } = [];
+    /// <summary>Popups with fields of their own, opened from code (a form's tools; later lists, pages, reports, jobs).</summary>
+    public IReadOnlyList<ModalDefinition> Modals { get; init; } = [];
 
     /// <summary>A preview of this app's draft (not stored in JSON): its key is <see cref="PreviewKey"/>.</summary>
     [JsonIgnore]
@@ -45,7 +47,23 @@ public sealed class AppDefinition
         Forms = Forms,
         Lists = Lists,
         Menu = Menu,
+        Modals = Modals,
         PreviewOf = Key,
+    };
+
+    /// <summary>The same definition as another version (publishing a draft).</summary>
+    public AppDefinition WithVersion(string version) => new()
+    {
+        Key = Key,
+        Name = Name,
+        Version = version,
+        Description = Description,
+        Icon = Icon,
+        Entities = Entities,
+        Forms = Forms,
+        Lists = Lists,
+        Menu = Menu,
+        Modals = Modals,
     };
 
     /// <summary>The same preview without entities: comparing to it drops every table.</summary>
@@ -54,6 +72,7 @@ public sealed class AppDefinition
     public EntityDefinition? Entity(string key) => Entities.FirstOrDefault(e => e.Key == key);
     public FormDefinition? Form(string key) => Forms.FirstOrDefault(f => f.Key == key);
     public ListDefinition? List(string key) => Lists.FirstOrDefault(l => l.Key == key);
+    public ModalDefinition? Modal(string key) => Modals.FirstOrDefault(m => m.Key == key);
 
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -175,6 +194,11 @@ public enum FieldType
     Choice,
     /// <summary>A record of another entity of the app (<see cref="FieldDefinition.Reference"/>).</summary>
     Reference,
+    // Organization pickers (modals only): one of the companies, locations, plants or periods the user may work in.
+    Company,
+    Location,
+    Plant,
+    Period,
 }
 
 public sealed class FieldDefinition
@@ -239,11 +263,93 @@ public sealed class FormDefinition
     /// <summary>The entity whose records it edits.</summary>
     public required string Entity { get; init; }
     public IReadOnlyList<FormSection> Sections { get; init; } = [];
+    /// <summary>The form's tools menu ("Araçlar"): each item calls a method of the form's code.</summary>
+    public IReadOnlyList<FormTool> Tools { get; init; } = [];
+}
+
+/// <summary>
+/// An item of a form's tools menu. It calls <see cref="Method"/> of the form's code class
+/// (<c>[Form("key")] class … : FormCode&lt;T&gt;</c>) with the form as it is on the screen (saved or
+/// not); what the method changes goes back to the form.
+/// </summary>
+public sealed class FormTool
+{
+    public required string Label { get; init; }
+    public string? Icon { get; init; }
+    /// <summary>A public method of the form's code class.</summary>
+    public required string Method { get; init; }
+    /// <summary>A question asked before it runs.</summary>
+    public string? Confirm { get; init; }
+}
+
+/// <summary>
+/// A popup with fields of its own (not an entity's): what code asks the user before it goes on,
+/// e.g. a date range with a company and a period. Defined once, opened from many places.
+/// Layout as in a form: sections of fields; none: all fields in one section.
+/// </summary>
+public sealed class ModalDefinition
+{
+    public required string Key { get; init; }
+    public required string Name { get; init; }
+    public IReadOnlyList<FieldDefinition> Fields { get; init; } = [];
+    public IReadOnlyList<FormSection> Sections { get; init; } = [];
+    /// <summary>The text of the button that accepts it (default "Tamam").</summary>
+    public string? OkText { get; init; }
+
+    public FieldDefinition? Field(string key) => Fields.FirstOrDefault(f => f.Key == key);
 }
 
 public sealed class FormSection
 {
     public string? Title { get; init; }
-    public IReadOnlyList<string> Fields { get; init; } = [];
+    public IReadOnlyList<FormField> Fields { get; init; } = [];
     public int Columns { get; init; } = 2;
+}
+
+/// <summary>
+/// A field on a form. In JSON it is the field's key ("unvan"), or an object when it carries
+/// more than the key: { "field": "aciklama", "span": 2 }.
+/// </summary>
+[JsonConverter(typeof(FormFieldConverter))]
+public sealed class FormField
+{
+    /// <summary>The key of a field of the form's entity.</summary>
+    public required string Field { get; init; }
+    /// <summary>Columns of the section it takes (1 up to the section's columns). Default: one; a long text the whole row.</summary>
+    public int? Span { get; init; }
+
+    public static implicit operator FormField(string field) => new() { Field = field };
+}
+
+sealed class FormFieldConverter : JsonConverter<FormField>
+{
+    public override FormField Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String) return new FormField { Field = reader.GetString()! };
+        if (reader.TokenType != JsonTokenType.StartObject) throw new JsonException("Formdaki alan bir anahtar ya da { field, span } nesnesi olmalı.");
+        string? field = null;
+        int? span = null;
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+        {
+            var name = reader.GetString();
+            reader.Read();
+            if (string.Equals(name, "field", StringComparison.OrdinalIgnoreCase)) field = reader.GetString();
+            else if (string.Equals(name, "span", StringComparison.OrdinalIgnoreCase)) span = reader.TokenType == JsonTokenType.Null ? null : reader.GetInt32();
+            else reader.Skip();
+        }
+        return new FormField { Field = field ?? throw new JsonException("Formdaki alanın anahtarı (field) yok."), Span = span };
+    }
+
+    public override void Write(Utf8JsonWriter writer, FormField value, JsonSerializerOptions options)
+    {
+        if (value.Span is null)
+        {
+            writer.WriteStringValue(value.Field);
+            return;
+        }
+        writer.WriteStartObject();
+        writer.WriteString("field", value.Field);
+        writer.WriteNumber("span", value.Span.Value);
+        writer.WriteEndObject();
+    }
 }

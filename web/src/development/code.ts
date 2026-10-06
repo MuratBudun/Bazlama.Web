@@ -22,9 +22,31 @@ export interface CodeDiagnostic {
   code: string
   message: string
 }
+/** A method of a form's code class that a tool may call; positions are 1-based. */
+export interface FormMethod {
+  name: string
+  path: string
+  line: number
+  column: number
+}
+/** A form's code class: where it is, where it ends (its closing brace) and the methods its tools may call. */
+export interface FormCodeOutline {
+  form: string
+  class: string
+  /** The class of the records the form edits ("Siparis"). */
+  record: string
+  path: string
+  line: number
+  column: number
+  endLine: number
+  endColumn: number
+  methods: FormMethod[]
+}
 export interface CheckResult {
   success: boolean
   diagnostics: CodeDiagnostic[]
+  /** The forms' code classes in the checked files (an app's check; a library has none). */
+  forms?: FormCodeOutline[]
 }
 /** A suggestion from Roslyn (kind: Class, Method, Property, Keyword…). */
 export interface CompletionEntry {
@@ -59,6 +81,19 @@ export const pascal = (key: string) =>
     .filter(Boolean)
     .map((p) => p[0].toUpperCase() + p.slice(1))
     .join("")
+/**
+ * Where the generated class of an entity or a modal is declared in the generated file
+ * (EntityCodeGenerator marks each class with [Entity("key")] or [Modal("key")]): 1-based, the
+ * column of the class name. Null: the file has no such class (yet).
+ */
+export function generatedClassAt(text: string, kind: "Entity" | "Modal", key: string): { line: number; column: number } | null {
+  const lines = text.split(/\r?\n/)
+  const mark = lines.findIndex((l) => l.trim() === `[${kind}("${key}")]`)
+  if (mark < 0) return null
+  const at = lines.findIndex((l, i) => i > mark && /\bclass\s/.test(l))
+  if (at < 0) return null
+  return { line: at + 1, column: lines[at].search(/\bclass\s/) + "class ".length + 1 }
+}
 export const validPath = (path: string) => /^[A-Za-z0-9_\-]+(\/[A-Za-z0-9_\-]+)*\.cs$/.test(path)
 
 /**
@@ -150,6 +185,8 @@ export function codeFiles(o: CodeFilesOptions) {
   const readonlyPaths = signal<string[]>([...readonlyText.keys()])
   const dirty = signal<ReadonlySet<string>>(new Set())
   const diagnostics = signal<CodeDiagnostic[]>([])
+  /** The forms' code classes as of the last check; null until the first check answers. */
+  const outline = signal<FormCodeOutline[] | null>(null)
   const checking = signal(false)
 
   let m: Monaco | undefined
@@ -207,6 +244,7 @@ export function codeFiles(o: CodeFilesOptions) {
       const r = await o.check(contents())
       if (disposed) return
       diagnostics.set(r.diagnostics)
+      outline.set(r.forms ?? [])
       applyMarkers()
     } catch (e) {
       toast.error(errorText(e))
@@ -259,6 +297,14 @@ export function codeFiles(o: CodeFilesOptions) {
     createModel(path)
     scheduleCheck()
   }
+  /** Inserts lines before a line of a file: an unsaved edit like any other (it can be undone in the editor). */
+  const insertBefore = async (path: string, line: number, lines: string) => {
+    const monaco = await load()
+    const model = createModel(path)
+    if (!model || isReadonly(path)) return false
+    model.pushEditOperations([], [{ range: new monaco.Range(line, 1, line, 1), text: lines }], () => null)
+    return true
+  }
   const remove = async (path: string) => {
     await o.remove(path)
     const mdl = models.get(path)
@@ -301,6 +347,8 @@ export function codeFiles(o: CodeFilesOptions) {
     isReadonly,
     dirty,
     diagnostics,
+    outline,
+    insertBefore,
     errorCounts,
     checking,
     load,

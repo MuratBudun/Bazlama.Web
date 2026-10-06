@@ -1,0 +1,138 @@
+{
+  "chrome": "Chrome/154.0.8037.58",
+  "base": "http://127.0.0.1:5420",
+  "throttle": 4,
+  "variant": [],
+  "loads": [],
+  "actions": [
+    {
+      "name": "Karttan uygulama sekmesi açma",
+      "painted": 110.5,
+      "api": 0,
+      "script": 9.6,
+      "style": 3.9,
+      "layout": 4.2,
+      "client": 110.5
+    },
+    {
+      "name": "Menüden liste (Müşteriler, 50 satır)",
+      "painted": 349.4,
+      "api": 11.6,
+      "script": 23.6,
+      "style": 22.6,
+      "layout": 17,
+      "client": 337.8
+    },
+    {
+      "name": "Listeden listeye (Siparişler, 50 satır)",
+      "painted": 191.6,
+      "api": 0,
+      "script": 17,
+      "style": 14.1,
+      "layout": 9.2,
+      "client": 191.6
+    },
+    {
+      "name": "Kayıt formu (7 kalem)",
+      "painted": 239.4,
+      "api": 6.7,
+      "script": 17.6,
+      "style": 16,
+      "layout": 9.7,
+      "client": 232.7
+    },
+    {
+      "name": "Kayıt formu (120 kalem, tam çizim)",
+      "painted": 549.5,
+      "api": 8.3,
+      "script": 35.4,
+      "style": 34.7,
+      "layout": 27.7,
+      "client": 541.2
+    },
+    {
+      "name": "Kayıt formu (400 kalem, sanal kaydırma)",
+      "painted": 264.4,
+      "api": 13.2,
+      "script": 19,
+      "style": 14.2,
+      "layout": 13.6,
+      "client": 251.2
+    },
+    {
+      "name": "Kayıttan listeye dönüş",
+      "painted": 248.5,
+      "api": 13.2,
+      "script": 19.1,
+      "style": 19.2,
+      "layout": 15,
+      "client": 235.3
+    },
+    {
+      "name": "Sekme: uygulama → ana sayfa",
+      "painted": 48.4,
+      "api": 0,
+      "script": 3.6,
+      "style": 4.1,
+      "layout": 1.6,
+      "client": 48.4
+    },
+    {
+      "name": "Sekme: ana sayfa → uygulama (canlı içerik)",
+      "painted": 142.3,
+      "api": 0,
+      "script": 10.4,
+      "style": 10.8,
+      "layout": 9,
+      "client": 142.3
+    },
+    {
+      "name": "Liste sıralama (sunucuda, 50 satır)",
+      "painted": 152,
+      "api": 3.5,
+      "script": 6.9,
+      "style": 9.2,
+      "layout": 7.7,
+      "client": 148.5
+    },
+    {
+      "name": "Kalem düzenleme diyaloğu açma",
+      "painted": 106,
+      "api": 0,
+      "script": 5,
+      "style": 14.1,
+      "layout": 2.8,
+      "client": 106
+    },
+    {
+      "name": "Alan değişimi: Yönetim › Kullanıcılar",
+      "painted": 163.4,
+      "api": 6.1,
+      "script": 15.4,
+      "style": 11.7,
+      "layout": 5.7,
+      "client": 157.3
+    },
+    {
+      "name": "Alan değişimi: Uygulamalar (ana sayfa)",
+      "painted": 67.8,
+      "api": 0,
+      "script": 8.8,
+      "style": 3.1,
+      "layout": 1.1,
+      "client": 67.8
+    }
+  ],
+  "typing": {
+    "chars": 150,
+    "typed": 159,
+    "scriptPerKey": 0.104,
+    "stylePerKey": 0.005,
+    "layoutPerKey": 0.913,
+    "taskPerKey": 5.234,
+    "layoutsPerKey": 1,
+    "wallPerKey": 21.24
+  },
+  "memory": [],
+  "leaks": []
+}

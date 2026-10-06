@@ -136,7 +136,7 @@ export async function publishDraft(store: DraftStore) {
         return html`<div class="stack plan">
           ${p.plan.errors.length ? html`<bz-alert variant="danger" heading="Yayınlanamaz"><ul>${p.plan.errors.map((e) => html`<li>${e}</li>`)}</ul></bz-alert>` : null}
           ${p.code && !p.code.success
-            ? html`<bz-alert variant="danger" heading="Kod yeni tanımla derlenmiyor"><ul>${codeErrors.slice(0, 10).map((d) => html`<li>${d.path}:${d.line} — ${d.message}</li>`)}</ul></bz-alert>`
+            ? html`<bz-alert variant="danger" heading="Kod yeni tanımla derlenmiyor"><ul>${codeErrors.slice(0, 10).map((d) => html`<li>${d.path ? `${d.path}:${d.line} — ` : ""}${d.message}</li>`)}</ul></bz-alert>`
             : p.code ? html`<bz-alert variant="success">Kod yeni tanımla derleniyor.</bz-alert>` : null}
           ${p.plan.errors.length ? null : html`<h2>${p.plan.fromVersion ? `${p.plan.fromVersion} → ${p.plan.toVersion}` : `${p.plan.toVersion} (ilk yayın)`}</h2>
             <ul class="changes">${p.plan.changes.map((c) => html`<li class=${c.destructive ? "destructive" : ""}>${c.destructive ? icon("alert", { size: 14 }) : icon("check", { size: 14 })} ${c.description}</li>`)}</ul>

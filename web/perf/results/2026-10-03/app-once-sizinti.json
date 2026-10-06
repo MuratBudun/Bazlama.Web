@@ -1,0 +1,116 @@
+{
+  "chrome": "Chrome/154.0.8037.58",
+  "base": "http://127.0.0.1:5420",
+  "throttle": 1,
+  "variant": [],
+  "loads": [],
+  "actions": [],
+  "typing": null,
+  "memory": [],
+  "leaks": [
+    {
+      "name": "Liste ↔ kayıt formu",
+      "cycles": 40,
+      "heapMB": [
+        2.4,
+        2.85,
+        2.94
+      ],
+      "firstKBPerCycle": 11.37,
+      "secondKBPerCycle": 2.32,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Liste ↔ 120 kalemli kayıt",
+      "cycles": 20,
+      "heapMB": [
+        2.95,
+        3.02,
+        3.08
+      ],
+      "firstKBPerCycle": 3.82,
+      "secondKBPerCycle": 3.03,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Uygulama sekmesi aç / kapat",
+      "cycles": 30,
+      "heapMB": [
+        2.63,
+        2.73,
+        2.79
+      ],
+      "firstKBPerCycle": 3.32,
+      "secondKBPerCycle": 2.23,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Sekme geçişi ana sayfa ↔ uygulama",
+      "cycles": 50,
+      "heapMB": [
+        3.15,
+        3.34,
+        3.42
+      ],
+      "firstKBPerCycle": 3.92,
+      "secondKBPerCycle": 1.62,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Diyalog aç / kapat (kalem formu)",
+      "cycles": 40,
+      "heapMB": [
+        3.48,
+        3.55,
+        3.57
+      ],
+      "firstKBPerCycle": 1.61,
+      "secondKBPerCycle": 0.66,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Alan değişimi Uygulamalar ↔ Yönetim",
+      "cycles": 20,
+      "heapMB": [
+        3.07,
+        3.07,
+        3.07
+      ],
+      "firstKBPerCycle": -0.1,
+      "secondKBPerCycle": 0.12,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Geliştirme: C# sekmesi aç / kapat",
+      "cycles": 20,
+      "heapMB": [
+        15.21,
+        17.33,
+        17.47
+      ],
+      "firstKBPerCycle": 108.46,
+      "secondKBPerCycle": 7.35,
+      "nodesPerCycle": 0.73,
+      "listenersPerCycle": 0
+    },
+    {
+      "name": "Geliştirme'ye gir / çık",
+      "cycles": 10,
+      "heapMB": [
+        15.97,
+        16.2,
+        16.3
+      ],
+      "firstKBPerCycle": 22.9,
+      "secondKBPerCycle": 11.14,
+      "nodesPerCycle": 0,
+      "listenersPerCycle": 0
+    }
+  ]
+}

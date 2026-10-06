@@ -42,10 +42,22 @@ api.MapGet("/system/info", (IDatabaseProvider provider) =>
     new SystemInfo("Bazlama", version, mode.ToString(), provider.Name)).RequireActiveSession();
 
 // The web UI (web/ → npm run build → wwwroot). Unknown /api paths stay 404.
+// Files under /assets carry a content hash in their name: the browser may keep them for good,
+// and they are served compressed (about a quarter of the size; the code editor alone is 3.9 MB).
+// The pages (index.html, preview.html) name those files, so they are checked every time.
+// Only these files are compressed, never /api.
+var ui = new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+        context.Context.Response.Headers.CacheControl = context.Context.Request.Path.StartsWithSegments(AssetCompression.Prefix)
+            ? AssetCompression.Forever
+            : "no-cache",
+};
+app.UseMiddleware<AssetCompression>();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(ui);
 app.MapFallback("/api/{**path}", () => Results.NotFound());
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html", ui);
 
 await app.RunAsync();
 return 0;

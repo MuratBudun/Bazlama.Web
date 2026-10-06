@@ -5,7 +5,7 @@ import { api, ApiError, errorText } from "../api"
 import { exportPackage } from "../management/apps"
 import { confirmAction, formDialog, loader, loading, textField } from "../management/ui"
 import { forgetRuntimeApps } from "../runtime/api"
-import { className, codeFiles, codeTree, pascal, validPath, type CheckResult, type CodeDiagnostic, type CompletionEntry, type SourceFile } from "./code"
+import { className, codeFiles, codeTree, generatedClassAt, pascal, validPath, type CheckResult, type CodeDiagnostic, type CompletionEntry, type SourceFile } from "./code"
 import "./components/app-settings"
 import "./components/code-editor"
 import { dualView } from "./components/dual-view"
@@ -17,12 +17,12 @@ import "./components/menu-designer"
 import type { Problem, WorkbenchElement, WorkbenchModel, WorkbenchTab } from "./components/workbench"
 import "./components/workbench"
 import { discardDraft, draftStore, publishDraft } from "./draft"
-import { newEntity, newForm, newList, removeEntity, removeForm, removeList } from "./meta"
+import { newEntity, newForm, newList, newModal, removeEntity, removeForm, removeList, removeModal } from "./meta"
 import { parts, type DraftPart } from "./schema"
 
 /*
  * An app in development: one workbench. The explorer shows the app, its entities (details
- * under their master), its code files, the libraries it uses and the generated entity
+ * under their master), its lists, forms and modals, its code files, the libraries it uses and the generated entity
  * classes; each opens as a tab. The toolbar saves, builds and publishes.
  */
 
@@ -68,6 +68,38 @@ public class ${entity}Events : EntityEvents<${entity}>
     }
 }
 `
+/** The code class of a form: a method per item of its tools menu. */
+const formCodeTemplate = (name: string, form: string, entity: string, tools: { label: string; method: string }[]) => `// "${name}" formunun kodu. Formun Araçlar menüsündeki her öğe buradaki bir metodu çağırır.
+// record: formun ekrandaki hali (kaydedilmemiş olabilir; yeni kayıtta Id boştur). Değiştirdiğiniz
+// alanlar forma geri yazılır; kaydetmek için ActionResult.Save dönün. Metot async Task<ActionResult>
+// de olabilir; kullanıcıdan girdi almak için: var m = await context.Modals.ShowAsync<ModalSinifi>();
+
+[Form("${form}")]
+public class ${pascal(form)}Formu : FormCode<${entity}>
+{
+${(tools.length ? tools : [{ label: "Örnek araç", method: "OrnekArac" }])
+  .map((t) => `    // ${t.label}\n    public ActionResult ${t.method}(${entity} record, IAppContext context)\n    {\n        return ActionResult.Ok();\n    }`)
+  .join("\n\n")}
+}
+`
+/** The code class of a modal: what it starts with, and the check when the user accepts it. */
+const modalCodeTemplate = (name: string, modal: string) => `// "${name}" modalının kodu.
+
+public class ${modal}Kodu : ModalCode<${modal}>
+{
+    // Modal gösterilmeden önce: varsayılan değerler.
+    public override Task OpenAsync(${modal} values, IAppContext context)
+    {
+        return Task.CompletedTask;
+    }
+
+    // Kullanıcı onayladığında: errors'a eklenen hata modalı açık tutar.
+    public override Task ValidateAsync(${modal} values, Errors errors, IAppContext context)
+    {
+        return Task.CompletedTask;
+    }
+}
+`
 const fileTemplate = (namespace: string, path: string) => {
   const name = className(path)
   return name.endsWith("Events") && name.length > 6 ? eventsTemplate(namespace, name.slice(0, -6)) : `// ${path}\n// Entity sınıfları: ${namespace}\n\npublic static class ${name}\n{\n}\n`
@@ -79,7 +111,7 @@ function showBuildFailure(r: BuildResult) {
     size: "lg",
     content: html`<div class="stack">
       ${r.errors.map((e) => html`<bz-alert variant="danger">${e}</bz-alert>`)}
-      <ul class="changes">${r.diagnostics.filter((d) => d.severity === "error").map((d) => html`<li class="destructive">${d.path}:${d.line} — ${d.message}</li>`)}</ul>
+      <ul class="changes">${r.diagnostics.filter((d) => d.severity === "error").map((d) => html`<li class="destructive">${d.path ? `${d.path}:${d.line} — ` : ""}${d.message}</li>`)}</ul>
     </div>`,
   })
 }
@@ -132,7 +164,19 @@ export const appPage = definePage({
       }
 
       // ── Actions ──────────────────────────────────────────────────────
-      const open = (id: string) => bench?.open(id)
+      const open = (id: string, at?: { line: number; column?: number }) => bench?.open(id, at)
+      /**
+       * The class generated for an entity or a modal, in the read-only file of generated code:
+       * what the app's code sees of it (its properties, the constants of its choices).
+       */
+      const openGenerated = async (kind: "Entity" | "Modal", k: string) => {
+        const find = () => generatedClassAt(files.text(w.generated.path), kind, k)
+        // The generated classes follow the saved draft: unsaved changes are saved first.
+        if (store.dirty()) await store.save().catch(() => {})
+        const at = find()
+        open(`file:${w.generated.path}`, at ?? undefined)
+        if (!at) toast.warning("Bu tanımın sınıfı henüz üretilmedi: taslağı kaydedin ve hatalarını düzeltin.")
+      }
       const addEntity = async (parent?: string) => {
         const k = await newEntity(store, parent)
         if (k) open(`entity:${k}`)
@@ -144,6 +188,76 @@ export const appPage = definePage({
       const addForm = async (entity?: string) => {
         const k = await newForm(store, entity)
         if (k) open(`form:${k}`)
+      }
+      const addModal = async () => {
+        const k = await newModal(store)
+        if (k) open(`modal:${k}`)
+      }
+      /** The file holding a class that matches, else a new file from the template. */
+      const openClass = async (declared: RegExp, path: string, template: () => string) => {
+        const found = files.paths().find((p) => declared.test(files.text(p)))
+        if (found) return open(`file:${found}`)
+        // The generated classes come from the saved draft: a new form's or modal's must exist first.
+        if (store.dirty()) await store.save()
+        await files.create(path, template())
+        open(`file:${path}`)
+      }
+      /** What the code check (BZ0003, against the saved draft) says about a form's tools. */
+      const toolProblems = (form: string) => files.diagnostics().filter((d) => d.code === "BZ0003" && d.message.includes(`'${form}' formunun`)).map((d) => d.message)
+      /** A form's code class as of the last check: null when it has none, undefined while the first check runs. */
+      const formCode = (form: string) => {
+        const all = files.outline()
+        return all === null ? undefined : (all.find((f) => f.form === form) ?? null)
+      }
+      /**
+       * A tool's method in the form's code. A method that is not there yet is written first: with
+       * the class when the form has no code, else as a new method at the end of its class.
+       */
+      const goToMethod = async (form: string, method: string) => {
+        const f = store.def()!.forms?.find((x) => x.key === form)
+        if (!f || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(method)) return
+        // The code is checked against the saved draft; the check says where things are now.
+        if (store.dirty()) await store.save()
+        await files.check()
+        let code = formCode(form)
+        if (!code) {
+          await openFormCode(form)
+          await files.check()
+          code = formCode(form)
+          // The file was there but holds no class the form can use: its problems say why.
+          if (!code) return void toast.warning("Formun kod sınıfı bulunamadı: Sorunlar paneline bakın.")
+        }
+        const at = () => code!.methods.find((m) => m.name === method)
+        if (!at()) {
+          const lines = files.text(code.path).split(/\r?\n/)
+          const indent = /^\s*/.exec(lines[code.endLine - 1] ?? "")![0]
+          const before = (lines[code.endLine - 2] ?? "").trim()
+          const label = f.tools?.find((t) => t.method === method)?.label
+          const stub = [
+            ...(before && before !== "{" ? [""] : []),
+            ...(label ? [`${indent}    // ${label}`] : []),
+            `${indent}    public ActionResult ${method}(${code.record} record, IAppContext context)`,
+            `${indent}    {`,
+            `${indent}        return ActionResult.Ok();`,
+            `${indent}    }`,
+          ]
+          if (!(await files.insertBefore(code.path, code.endLine, stub.map((l) => `${l}\n`).join("")))) return
+          await files.check()
+          code = formCode(form) ?? code
+          toast.info(`${method} metodu ${code.class} sınıfına eklendi; dosyayı kaydedin.`)
+        }
+        const m = at()
+        open(`file:${m?.path ?? code.path}`, m ? { line: m.line, column: m.column } : { line: code.line, column: code.column })
+      }
+      const openFormCode = async (form: string) => {
+        const f = store.def()!.forms?.find((x) => x.key === form)
+        if (!f) return
+        await openClass(new RegExp(`\\[\\s*Form\\s*\\(\\s*"${form}"\\s*\\)`), `${pascal(form)}Formu.cs`, () => formCodeTemplate(f.name, form, pascal(f.entity), f.tools ?? []))
+      }
+      const openModalCode = async (modal: string) => {
+        const m = store.def()!.modals?.find((x) => x.key === modal)
+        if (!m) return
+        await openClass(new RegExp(`ModalCode\\s*<\\s*${pascal(modal)}\\s*>`), `${pascal(modal)}Kodu.cs`, () => modalCodeTemplate(m.name, pascal(modal)))
       }
       /** The entity's first form, or a new one. */
       const openForm = (entity: string) => {
@@ -274,6 +388,7 @@ export const appPage = definePage({
         })
       const formErrors = errorsOf("Form")
       const listErrors = errorsOf("Liste")
+      const modalErrors = errorsOf("Modal")
       const menuErrors = computed(() => store.errors().filter((e) => e.startsWith("Menü")).length)
       const tree = computed<TreeItem[]>(() => {
         const d = store.def()!
@@ -304,6 +419,12 @@ export const appPage = definePage({
             icon: "folder",
             children: (d.forms ?? []).map((f) => ({ id: `form:${f.key}`, label: f.name || f.key, icon: "dashboard", badge: formErrors().get(f.key) || undefined })),
           },
+          {
+            id: "modals",
+            label: "Modallar",
+            icon: "folder",
+            children: (d.modals ?? []).map((m) => ({ id: `modal:${m.key}`, label: m.name || m.key, icon: "message", badge: modalErrors().get(m.key) || undefined })),
+          },
           { id: "code", label: "Kod", icon: "folder", children: codeTree(files.paths(), files.errorCounts()) },
           {
             id: "libraries",
@@ -326,7 +447,7 @@ export const appPage = definePage({
           content: () =>
             dualView(
               `entity:${key}:${k}`,
-              () => html`<bazlama-entity-editor .store=${store} entity=${k} .openCode=${() => openCode} .openForm=${() => openForm}></bazlama-entity-editor>`,
+              () => html`<bazlama-entity-editor .store=${store} entity=${k} .openCode=${() => openCode} .openForm=${() => openForm} .openClass=${() => (e: string) => void openGenerated("Entity", e)}></bazlama-entity-editor>`,
               () => json(parts.entity(k)),
             ),
         }
@@ -351,8 +472,20 @@ export const appPage = definePage({
         content: () =>
           dualView(
             `form:${key}:${k}`,
-            () => html`<bazlama-form-designer .store=${store} form=${k} .openEntity=${() => (e: string) => open(`entity:${e}`)}></bazlama-form-designer>`,
+            () => html`<bazlama-form-designer .store=${store} form=${k} .openEntity=${() => (e: string) => open(`entity:${e}`)} .openCode=${() => (f: string) => void openFormCode(f)} .toolProblems=${() => toolProblems} .formCode=${() => formCode} .goToMethod=${() => (f: string, m: string) => void goToMethod(f, m).catch((e) => toast.error(errorText(e)))}></bazlama-form-designer>`,
             () => json(parts.form(k)),
+          ),
+      })
+      const modalTab = (k: string): WorkbenchTab => ({
+        title: () => store.def()?.modals?.find((x) => x.key === k)?.name || k,
+        icon: "message",
+        detail: `Modal: ${k}`,
+        dirty: () => store.partDirty((d) => d.modals?.find((x) => x.key === k) ?? null),
+        content: () =>
+          dualView(
+            `modal:${key}:${k}`,
+            () => html`<bazlama-form-designer .store=${store} modal=${k} .openCode=${() => (m: string) => void openModalCode(m)} .openClass=${() => (m: string) => void openGenerated("Modal", m)}></bazlama-form-designer>`,
+            () => json(parts.modal(k)),
           ),
       })
       const fileTab = (path: string): WorkbenchTab => ({
@@ -368,14 +501,14 @@ export const appPage = definePage({
         persist: `app:${key}`,
         tree,
         initial: ["app"],
-        expanded: ["entities", "lists", "forms", "code"],
+        expanded: ["entities", "lists", "forms", "modals", "code"],
         tab(id) {
           if (id === "app")
             return {
               title: () => store.def()?.name || key,
               icon: "settings",
               detail: "Uygulama",
-              dirty: () => store.partDirty((d) => ({ name: d.name, icon: d.icon, description: d.description, entities: d.entities.map((e) => e.key), forms: (d.forms ?? []).map((f) => f.key), lists: (d.lists ?? []).map((l) => l.key) })),
+              dirty: () => store.partDirty((d) => ({ name: d.name, icon: d.icon, description: d.description, entities: d.entities.map((e) => e.key), forms: (d.forms ?? []).map((f) => f.key), lists: (d.lists ?? []).map((l) => l.key), modals: (d.modals ?? []).map((m) => m.key) })),
               content: () =>
                 dualView(
                   `app:${key}`,
@@ -386,6 +519,7 @@ export const appPage = definePage({
           if (id.startsWith("entity:")) return entityTab(id.slice(7))
           if (id.startsWith("form:")) return formTab(id.slice(5))
           if (id.startsWith("list:")) return listTab(id.slice(5))
+          if (id.startsWith("modal:")) return modalTab(id.slice(6))
           if (id === "menu")
             return {
               title: () => "Menü",
@@ -420,11 +554,22 @@ export const appPage = definePage({
               { value: "new-list", label: "Yeni liste", icon: "table" },
               { value: "new-form", label: "Yeni form", icon: "dashboard" },
               { value: "code", label: files.paths().includes(eventsPath(id.slice(7))) ? "Olay kodunu aç" : "Olay kodu oluştur", icon: "code" },
+              { value: "class", label: "Üretilen sınıf", icon: "lock" },
               { type: "separator" },
               { value: "remove-entity", label: "Kaldır", icon: "trash", variant: "danger" },
             )
           } else if (id === "forms") items.push({ value: "new-form", label: "Yeni form", icon: "plus" })
           else if (id === "lists") items.push({ value: "new-list", label: "Yeni liste", icon: "plus" })
+          else if (id === "modals") items.push({ value: "new-modal", label: "Yeni modal", icon: "plus" })
+          else if (id.startsWith("modal:")) {
+            items.push(
+              { value: "open", label: "Aç", icon: "external-link" },
+              { value: "modal-code", label: "Modal kodu", icon: "code" },
+              { value: "modal-class", label: "Üretilen sınıf", icon: "lock" },
+              { type: "separator" },
+              { value: "remove-modal", label: "Kaldır", icon: "trash", variant: "danger" },
+            )
+          }
           else if (id === "menu" || id === "definition") items.push({ value: "open", label: "Aç", icon: "external-link" })
           else if (id.startsWith("list:")) {
             items.push(
@@ -438,6 +583,7 @@ export const appPage = definePage({
             items.push(
               { value: "open", label: "Aç", icon: "external-link" },
               { value: "form-entity", label: "Entity'yi aç", icon: "database" },
+              { value: "form-code", label: "Form kodu", icon: "code" },
               { type: "separator" },
               { value: "remove-form", label: "Kaldır", icon: "trash", variant: "danger" },
             )
@@ -455,8 +601,14 @@ export const appPage = definePage({
           else if (value === "new-entity") void addEntity()
           else if (value === "new-detail") void addEntity(rest)
           else if (value === "code") void openCode(rest)
+          else if (value === "class") void openGenerated("Entity", rest)
+          else if (value === "modal-class") void openGenerated("Modal", rest)
           else if (value === "new-form") void addForm(id?.startsWith("entity:") ? rest : undefined)
           else if (value === "remove-form") void removeForm(store, rest)
+          else if (value === "form-code") void openFormCode(rest)
+          else if (value === "new-modal") void addModal()
+          else if (value === "remove-modal") void removeModal(store, rest)
+          else if (value === "modal-code") void openModalCode(rest)
           else if (value === "new-list") void addList(id?.startsWith("entity:") ? rest : undefined)
           else if (value === "remove-list") void removeList(store, rest)
           else if (value === "list-entity") {
@@ -476,6 +628,7 @@ export const appPage = definePage({
           <bz-button size="sm" variant="ghost" aria-label="Yeni entity" data-tooltip="Yeni entity" @click=${() => void addEntity()}>${icon("database")}</bz-button>
           <bz-button size="sm" variant="ghost" aria-label="Yeni liste" data-tooltip="Yeni liste" @click=${() => void addList()}>${icon("table")}</bz-button>
           <bz-button size="sm" variant="ghost" aria-label="Yeni form" data-tooltip="Yeni form" @click=${() => void addForm()}>${icon("dashboard")}</bz-button>
+          <bz-button size="sm" variant="ghost" aria-label="Yeni modal" data-tooltip="Yeni modal" @click=${() => void addModal()}>${icon("message")}</bz-button>
           <bz-button size="sm" variant="ghost" aria-label="Yeni dosya" data-tooltip="Yeni kod dosyası" @click=${() => void newFile()}>${icon("plus")}</bz-button>`,
         problems: () => {
           const def = store.def()!
@@ -486,13 +639,21 @@ export const appPage = definePage({
             const lk = /^Liste '([a-z][a-z0-9_]*)'/.exec(message)?.[1]
             const l = lk ? def.lists?.find((x) => x.key === lk) : undefined
             if (l) return { severity: "error", tab: `list:${l.key}`, where: l.name || l.key, message }
+            const mk = /^Modal '([a-z][a-z0-9_]*)'/.exec(message)?.[1]
+            const m = mk ? def.modals?.find((x) => x.key === mk) : undefined
+            if (m) return { severity: "error", tab: `modal:${m.key}`, where: m.name || m.key, message }
             if (message.startsWith("Menü")) return { severity: "error", tab: "menu", where: "Menü", message }
             const k = /^Entity '([a-z][a-z0-9_]*)'/.exec(message)?.[1]
             const e = k ? def.entities.find((x) => x.key === k) : undefined
             return { severity: "error", tab: e ? `entity:${e.key}` : "app", where: e ? e.name || e.key : "Tanım", message }
           })
-          for (const d of files.diagnostics())
-            list.push({ severity: d.severity, tab: `file:${d.path}`, where: `${d.path}:${d.line}`, message: d.message, code: d.code, line: d.line, column: d.column })
+          for (const d of files.diagnostics()) {
+            // No file: the definition asks for code that is not there (a form's tools without their class).
+            if (!d.path) {
+              const form = /^'([a-z][a-z0-9_]*)' formunun/.exec(d.message)?.[1]
+              list.push({ severity: d.severity, tab: form ? `form:${form}` : "app", where: "Kod", message: d.message, code: d.code })
+            } else list.push({ severity: d.severity, tab: `file:${d.path}`, where: `${d.path}:${d.line}`, message: d.message, code: d.code, line: d.line, column: d.column })
+          }
           return list
         },
         checking: files.checking,

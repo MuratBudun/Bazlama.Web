@@ -78,7 +78,7 @@ describe("bazlama-list-designer", () => {
   it("edits the columns in order and previews them with sample rows", async () => {
     const store = fakeStore()
     const { el, button } = await mount("bazlama-list-designer", store, { list: "siparis" })
-    expect(el.querySelectorAll(".fd-field")).toHaveLength(2)
+    expect(el.querySelectorAll(".ld-field")).toHaveLength(2)
     expect([...el.querySelectorAll("bz-data-grid thead th")].map((th) => th.textContent?.trim()).filter(Boolean)).toEqual(["No", "Tarih"])
     expect(el.querySelectorAll("bz-data-grid tbody tr[data-part=row]").length).toBeGreaterThan(0)
 

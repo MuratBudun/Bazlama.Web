@@ -207,7 +207,7 @@ public sealed class AppCodeTests : IAsyncLifetime
         await Build();
 
         var v2 = Samples.Node("siparis");
-        v2["version"] = "2.1.0";
+        v2["version"] = "2.2.0";
         v2["entities"]!.AsArray()[2]!["fields"]!.AsArray().Add(new JsonObject { ["key"] = "oncelik", ["label"] = "Öncelik", ["type"] = "integer" });
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/management/apps/install", new { definition = v2, confirmDestructive = false }, Ct)).StatusCode);
         var apps = await (await admin.GetAsync("/api/development/apps", Ct)).JsonAsync();
@@ -217,7 +217,7 @@ public sealed class AppCodeTests : IAsyncLifetime
 
         // 1.2.0 drops "aciklama", which the code uses: the rebuild fails and the code is unloaded.
         var v3 = Samples.Node("siparis");
-        v3["version"] = "2.2.0";
+        v3["version"] = "2.3.0";
         var siparis = v3["entities"]!.AsArray()[2]!.AsObject();
         siparis["fields"]!.AsArray().RemoveAt(5);
         Samples.Unuse(v3, "siparis", "aciklama");

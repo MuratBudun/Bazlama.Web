@@ -53,6 +53,9 @@ public interface IAppContext
     /// <summary>Reads records of this app (limited to the organization context).</summary>
     IRecords Records { get; }
 
+    /// <summary>Opens the app's modals (asks the user for input) while a user is waiting for the code.</summary>
+    IModals Modals { get; }
+
     /// <summary>Cancelled when the request ends or the code runs too long.</summary>
     CancellationToken Cancellation { get; }
 }
@@ -141,4 +144,70 @@ public sealed record ActionResult(string? Message, bool SaveRecord, IReadOnlyLis
 
     /// <summary>Refused, with the reason for the user.</summary>
     public static ActionResult Fail(params string[] errors) => new(null, false, errors);
+}
+
+// ── Forms and modals ────────────────────────────────────────────────────────
+
+/// <summary>Marks a class as the code of a form: <c>[Form("siparis")] class SiparisFormu : FormCode&lt;Siparis&gt;</c>.</summary>
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class FormAttribute(string key) : Attribute
+{
+    /// <summary>The form key in the app metadata.</summary>
+    public string Key { get; } = key;
+}
+
+/// <summary>
+/// The code of a form. Its public methods are what the form's tools menu ("Araçlar") calls:
+/// <code>
+/// public async Task&lt;ActionResult&gt; TeslimHesapla(Siparis record, IAppContext context)
+/// </code>
+/// The record is the form as it is on the screen, saved or not (a new record has an empty Id).
+/// What the method changes goes back to the form; nothing is stored unless it returns
+/// <see cref="ActionResult.Save"/> (then the form is saved the usual way). A method may also
+/// return Task, ActionResult or nothing.
+/// </summary>
+public abstract class FormCode<T> where T : Record
+{
+}
+
+/// <summary>Marks a generated modal class with the modal key of the app metadata.</summary>
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class ModalAttribute(string key) : Attribute
+{
+    /// <summary>The modal key in the app metadata.</summary>
+    public string Key { get; } = key;
+}
+
+/// <summary>Base of the generated modal classes (one per modal of the app): what the user entered.</summary>
+public abstract class ModalValues
+{
+}
+
+/// <summary>The code of a modal: derive from it (one class per modal) and override what you need.</summary>
+public abstract class ModalCode<T> where T : ModalValues
+{
+    /// <summary>Before the modal is shown: fill in what it starts with.</summary>
+    public virtual Task OpenAsync(T values, IAppContext context) => Task.CompletedTask;
+
+    /// <summary>When the user accepts it; add to <paramref name="errors"/> to keep it open.</summary>
+    public virtual Task ValidateAsync(T values, Errors errors, IAppContext context) => Task.CompletedTask;
+}
+
+/// <summary>
+/// Opens a modal of the app and gives back what the user entered. Works while a user is waiting
+/// for the code (a form's tool); elsewhere (saves, deletes) it throws.
+/// <para>
+/// The code does not really wait: the first call ends the run, the modal is shown, and when the
+/// user accepts it the method runs again from the start, this time getting the values. So the
+/// code before the call runs twice: keep it free of side effects (it normally only reads).
+/// If the user cancels, the method is not run again.
+/// </para>
+/// </summary>
+public interface IModals
+{
+    /// <summary>Opens the modal of the generated class <typeparamref name="T"/>; <paramref name="initial"/> sets what it starts with.</summary>
+    Task<T> ShowAsync<T>(Action<T>? initial = null) where T : ModalValues, new();
+
+    /// <summary>Opens a modal by its key (for code that does not know the app's classes, e.g. a code library). Values by field key.</summary>
+    Task<IReadOnlyDictionary<string, object?>> ShowAsync(string modal, IReadOnlyDictionary<string, object?>? initial = null);
 }

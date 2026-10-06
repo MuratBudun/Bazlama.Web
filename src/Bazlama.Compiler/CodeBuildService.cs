@@ -5,6 +5,7 @@ using Bazlama.Kernel;
 using Bazlama.Kernel.Code;
 using Bazlama.Kernel.Data;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -63,11 +64,24 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
         return await CheckAgainstAsync(app, files, await LibrariesOfAsync(appKey, ct), ct);
     }
 
+    /// <summary>
+    /// The same check for the editor, with the forms' code classes as they are in these (unsaved)
+    /// files: the designer offers their methods to the forms' tools and jumps to them.
+    /// </summary>
+    public async Task<(CompileOutput Output, IReadOnlyList<FormCodeOutline> Forms)> CheckWithOutlineAsync(string appKey, IReadOnlyList<SourceFile> files, CancellationToken ct)
+    {
+        var app = await EditingDefinitionAsync(appKey, ct) ?? throw new InvalidOperationException($"App bulunamadı: {appKey}");
+        var (refs, missing) = await LibraryReferencesAsync(await LibrariesOfAsync(appKey, ct), ct);
+        IReadOnlyList<FormCodeOutline> forms = [];
+        var output = Compile(app, files, refs, emit: false, inspect: compilation => forms = FormCodeCheck.Outline(compilation, app));
+        return (missing.Count == 0 ? output : output with { Success = false, Diagnostics = [.. missing.Select(m => Problem(m)), .. output.Diagnostics] }, forms);
+    }
+
     /// <summary>Does this code compile against this definition and these library versions? (Publish, import.)</summary>
     public async Task<CompileOutput> CheckAgainstAsync(AppDefinition app, IReadOnlyList<SourceFile> files, IReadOnlyList<LibraryRef> libraries, CancellationToken ct, IReadOnlyList<byte[]>? extraLibraryImages = null)
     {
         var (refs, missing) = await LibraryReferencesAsync(libraries, ct, extraLibraryImages);
-        var output = AppCompiler.Compile(AppAssemblyName(app.Key), Sources(app, files), refs, emit: false);
+        var output = Compile(app, files, refs, emit: false);
         return missing.Count == 0 ? output : output with { Success = false, Diagnostics = [.. missing.Select(m => Problem(m)), .. output.Diagnostics] };
     }
 
@@ -92,13 +106,13 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
         var (refs, missing) = await LibraryReferencesAsync(libraries, ct);
         if (missing.Count > 0) return new(false, null, null, [], missing);
 
-        var output = AppCompiler.Compile(AppAssemblyName(appKey), Sources(app, files), refs);
+        var output = Compile(app, files, refs);
         if (!output.Success)
         {
             // The editor checks against the draft; code written for it may not fit the published version.
             var editing = await EditingDefinitionAsync(appKey, ct);
             if (editing is not null && editing.ToJson() != app.ToJson()
-                && AppCompiler.Compile(AppAssemblyName(appKey), Sources(editing, files), refs, emit: false).Success)
+                && Compile(editing, files, refs, emit: false).Success)
                 return new(false, null, null, output.Diagnostics,
                     [$"Kod taslaktaki tanıma göre yazılmış; yayındaki v{app.Version} ile derlenmiyor. Derle yayındaki versiyonu derler: taslağı yayınlayın (yayınlama kodu yeni tanımla derleyip etkinleştirir) ya da denemek için Önizle'yi kullanın."]);
             return new(false, null, null, output.Diagnostics, ["Derleme hataları var."]);
@@ -143,7 +157,7 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
         var (refs, missing) = await LibraryReferencesAsync(libraries, ct);
         var output = missing.Count > 0
             ? new CompileOutput(false, null, null, [.. missing.Select(m => Problem(m))])
-            : AppCompiler.Compile(AppAssemblyName(draft.Key), Sources(draft, files), refs);
+            : Compile(draft, files, refs);
         if (output.Success) host.Load(previewKey, 0, "preview", output.Image!, output.Hash!, await LibraryImagesAsync(libraries, ct));
         else host.Unload(previewKey);
         return output;
@@ -184,7 +198,16 @@ public sealed class CodeBuildService(KernelDbContext db, AppRegistry registry, A
 
     /// <summary>An app's code against library images, without a database (packing an app from source files).</summary>
     public static CompileOutput CompileApp(AppDefinition app, IReadOnlyList<SourceFile> files, IEnumerable<byte[]> libraryImages) =>
-        AppCompiler.Compile(AppAssemblyName(app.Key), Sources(app, files), [.. libraryImages.Select(i => (MetadataReference)MetadataReference.CreateFromImage(i))]);
+        Compile(app, files, [.. libraryImages.Select(i => (MetadataReference)MetadataReference.CreateFromImage(i))]);
+
+    /// <summary>The app's code with its generated classes, checked against its definition (<see cref="FormCodeCheck"/>).</summary>
+    /// <param name="inspect">Looks at the compilation (what the editor wants to know beyond diagnostics).</param>
+    static CompileOutput Compile(AppDefinition app, IEnumerable<SourceFile> files, IEnumerable<MetadataReference>? refs, bool emit = true, Action<CSharpCompilation>? inspect = null) =>
+        AppCompiler.Compile(AppAssemblyName(app.Key), Sources(app, files), refs, emit, compilation =>
+        {
+            inspect?.Invoke(compilation);
+            return FormCodeCheck.Run(compilation, app);
+        });
 
     static IEnumerable<SourceFile> Sources(AppDefinition app, IEnumerable<SourceFile> files) =>
         [new SourceFile(EntityCodeGenerator.FileName, EntityCodeGenerator.Generate(app)), .. files];
@@ -299,6 +322,7 @@ public static class CompilerModule
         services.AddScoped<IAppCode, CompiledAppCode>();
         services.AddScoped<CodeBuildService>();
         services.AddScoped<ActionRunner>();
+        services.AddScoped<FormToolRunner>();
         services.AddScoped<PreviewService>();
         services.AddScoped<IAppInstallListener, RebuildOnInstall>();
         services.AddHostedService<AppCodeLoader>();

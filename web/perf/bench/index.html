@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bazlama bileşen kıyaslaması</title>
+    <style>
+      body { margin: 0; padding: 1rem; font: 14px system-ui, sans-serif; }
+      table.bench { border-collapse: collapse; width: 100%; }
+      table.bench td { padding: 4px 8px; border-bottom: 1px solid #ddd; }
+      table.bench td.id { width: 6rem; }
+      table.bench tr.danger { background: #f2dede; }
+      .grid-of { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; }
+      .grid-box { height: 600px; display: flex; flex-direction: column; }
+      .grid-box > bz-data-grid { flex: 1; min-height: 0; --bz-data-grid-max-height: none; max-height: none; }
+      .v-btn { padding: 0.4rem 0.8rem; border: 1px solid #bbb; border-radius: 6px; background: #fff; font: inherit; }
+      .v-field { display: grid; gap: 0.25rem; }
+      .v-field input, .v-field select { padding: 0.4rem 0.6rem; border: 1px solid #bbb; border-radius: 6px; font: inherit; }
+      .v-badge { display: inline-block; padding: 0 0.5rem; border-radius: 999px; background: #dcfce7; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./bench.ts"></script>
+  </body>
+</html>

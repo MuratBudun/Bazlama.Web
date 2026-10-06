@@ -1,0 +1,187 @@
+{
+  "chrome": "Chrome/154.0.8037.58",
+  "base": "http://127.0.0.1:5420",
+  "throttle": 4,
+  "variant": [],
+  "loads": [
+    {
+      "name": "Ana sayfa, soğuk (önbellek yok)",
+      "painted": 219,
+      "fcp": 204,
+      "requests": 8,
+      "transferKB": 378.6,
+      "jsKB": 266.7,
+      "api": 16.2,
+      "script": 16.8,
+      "style": 8.3,
+      "layout": 1.9
+    },
+    {
+      "name": "Ana sayfa, sıcak (önbellekten)",
+      "painted": 363.7,
+      "fcp": 344,
+      "requests": 8,
+      "transferKB": 0.8,
+      "jsKB": 266.7,
+      "api": 10.6,
+      "script": 29.9,
+      "style": 12.8,
+      "layout": 2.9
+    },
+    {
+      "name": "Doğrudan liste linki, sıcak (50 satır)",
+      "painted": 907,
+      "fcp": 280,
+      "requests": 11,
+      "transferKB": 0.8,
+      "jsKB": 266.7,
+      "api": 20.3,
+      "script": 62.9,
+      "style": 68.3,
+      "layout": 19.5
+    },
+    {
+      "name": "Doğrudan kayıt linki, sıcak (400 kalem)",
+      "painted": 2949.8,
+      "fcp": 280,
+      "requests": 11,
+      "transferKB": 0.8,
+      "jsKB": 266.7,
+      "api": 24.7,
+      "script": 176.8,
+      "style": 293.9,
+      "layout": 105.1
+    }
+  ],
+  "actions": [
+    {
+      "name": "Karttan uygulama sekmesi açma",
+      "painted": 89.6,
+      "api": 0,
+      "script": 7.5,
+      "style": 7.3,
+      "layout": 2.6,
+      "client": 89.6
+    },
+    {
+      "name": "Menüden liste (Müşteriler, 50 satır)",
+      "painted": 510.7,
+      "api": 7.3,
+      "script": 23.9,
+      "style": 56,
+      "layout": 18.7,
+      "client": 503.4
+    },
+    {
+      "name": "Listeden listeye (Siparişler, 50 satır)",
+      "painted": 215.1,
+      "api": 0,
+      "script": 13.3,
+      "style": 24.9,
+      "layout": 6.1,
+      "client": 215.1
+    },
+    {
+      "name": "Kayıt formu (7 kalem)",
+      "painted": 464.4,
+      "api": 6.3,
+      "script": 22.5,
+      "style": 49.6,
+      "layout": 12.5,
+      "client": 458.1
+    },
+    {
+      "name": "Kayıt formu (120 kalem, tam çizim)",
+      "painted": 1033.5,
+      "api": 8.2,
+      "script": 46.4,
+      "style": 113.5,
+      "layout": 33.4,
+      "client": 1025.3
+    },
+    {
+      "name": "Kayıt formu (400 kalem, sanal kaydırma)",
+      "painted": 2347.1,
+      "api": 12,
+      "script": 100.9,
+      "style": 263.2,
+      "layout": 96.9,
+      "client": 2335.1
+    },
+    {
+      "name": "Kayıttan listeye dönüş",
+      "painted": 514.5,
+      "api": 9.3,
+      "script": 23.8,
+      "style": 58.7,
+      "layout": 16.5,
+      "client": 505.2
+    },
+    {
+      "name": "Sekme: uygulama → ana sayfa",
+      "painted": 75.5,
+      "api": 0,
+      "script": 5.7,
+      "style": 7.1,
+      "layout": 1.6,
+      "client": 75.5
+    },
+    {
+      "name": "Sekme: ana sayfa → uygulama (canlı içerik)",
+      "painted": 260.5,
+      "api": 0,
+      "script": 11.8,
+      "style": 32.9,
+      "layout": 11.6,
+      "client": 260.5
+    },
+    {
+      "name": "Liste sıralama (sunucuda, 50 satır)",
+      "painted": 251.2,
+      "api": 3.7,
+      "script": 9.9,
+      "style": 20.5,
+      "layout": 8.4,
+      "client": 247.5
+    },
+    {
+      "name": "Kalem düzenleme diyaloğu açma",
+      "painted": 141,
+      "api": 0,
+      "script": 5.7,
+      "style": 18.5,
+      "layout": 2.4,
+      "client": 141
+    },
+    {
+      "name": "Alan değişimi: Yönetim › Kullanıcılar",
+      "painted": 214.4,
+      "api": 6.3,
+      "script": 16.3,
+      "style": 19.7,
+      "layout": 4.8,
+      "client": 208.1
+    },
+    {
+      "name": "Alan değişimi: Uygulamalar (ana sayfa)",
+      "painted": 78.1,
+      "api": 0,
+      "script": 9.5,
+      "style": 5.3,
+      "layout": 1.1,
+      "client": 78.1
+    }
+  ],
+  "typing": {
+    "chars": 150,
+    "typed": 159,
+    "scriptPerKey": 0.126,
+    "stylePerKey": 0.005,
+    "layoutPerKey": 0.977,
+    "taskPerKey": 5.306,
+    "layoutsPerKey": 1,
+    "wallPerKey": 22.86
+  },
+  "memory": [],
+  "leaks": []
+}

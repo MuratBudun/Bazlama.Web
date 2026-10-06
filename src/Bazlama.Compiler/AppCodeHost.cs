@@ -22,6 +22,12 @@ public sealed class LoadedApp
     public required IReadOnlyDictionary<string, IReadOnlyList<Type>> Events { get; init; }
     /// <summary>Entity key → RecordAction&lt;T&gt; implementations.</summary>
     public required IReadOnlyDictionary<string, IReadOnlyList<ActionInfo>> Actions { get; init; }
+    /// <summary>Form key → the form's code class ([Form] FormCode&lt;T&gt;): its tools.</summary>
+    public required IReadOnlyDictionary<string, FormCodeInfo> Forms { get; init; }
+    /// <summary>Modal key → generated values class.</summary>
+    public required IReadOnlyDictionary<string, Type> Modals { get; init; }
+    /// <summary>Modal key → ModalCode&lt;T&gt; implementations.</summary>
+    public required IReadOnlyDictionary<string, IReadOnlyList<Type>> ModalCode { get; init; }
 }
 
 /// <summary>
@@ -44,10 +50,18 @@ public sealed class AppCodeHost
         var records = new Dictionary<string, Type>();
         var events = new Dictionary<string, List<Type>>();
         var actions = new Dictionary<string, List<ActionInfo>>();
+        var forms = new Dictionary<string, FormCodeInfo>();
+        var modals = new Dictionary<string, Type>();
+        var modalCode = new Dictionary<string, List<Type>>();
         foreach (var type in assembly.GetTypes())
         {
             if (type.GetCustomAttribute<EntityAttribute>() is { } entity && type.IsSubclassOf(typeof(Record))) records[entity.Key] = type;
+            if (type.GetCustomAttribute<ModalAttribute>() is { } modal && type.IsSubclassOf(typeof(ModalValues))) modals[modal.Key] = type;
             if (type.IsAbstract || type.IsGenericTypeDefinition) continue;
+            if (type.GetCustomAttribute<FormAttribute>() is { } form && GenericBase(type, typeof(FormCode<>)) is { } formRecord)
+                forms[form.Key] = new FormCodeInfo(type, formRecord);
+            if (GenericBase(type, typeof(ModalCode<>)) is { } m && m.GetCustomAttribute<ModalAttribute>()?.Key is { } mk)
+                (modalCode.TryGetValue(mk, out var codes) ? codes : modalCode[mk] = []).Add(type);
             if (GenericBase(type, typeof(EntityEvents<>)) is { } e && EntityKey(e) is { } ek)
                 (events.TryGetValue(ek, out var l) ? l : events[ek] = []).Add(type);
             if (GenericBase(type, typeof(RecordAction<>)) is { } a && EntityKey(a) is { } ak)
@@ -67,6 +81,9 @@ public sealed class AppCodeHost
             Records = records,
             Events = events.ToDictionary(x => x.Key, x => (IReadOnlyList<Type>)x.Value),
             Actions = actions.ToDictionary(x => x.Key, x => (IReadOnlyList<ActionInfo>)[.. x.Value.OrderBy(a => a.Label)]),
+            Forms = forms,
+            Modals = modals,
+            ModalCode = modalCode.ToDictionary(x => x.Key, x => (IReadOnlyList<Type>)x.Value),
         };
         if (apps.TryGetValue(appKey, out var old)) old.Context.Unload();
         apps[appKey] = loaded;

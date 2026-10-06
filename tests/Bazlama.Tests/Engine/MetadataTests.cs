@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bazlama.Engine.Metadata;
 using Bazlama.Engine.Schema;
@@ -17,7 +18,19 @@ public static class Samples
     /// <summary>samples/apps/&lt;name&gt;/app.json.</summary>
     public static string Json(string name) => File.ReadAllText(Path.Combine(Folder(name), "app.json"));
 
-    public static JsonObject Node(string name) => JsonNode.Parse(Json(name))!.AsObject();
+    /// <summary>
+    /// The sample to install and change in a test, without its forms' tools: they need the
+    /// sample's own code, and these tests bring theirs (see <see cref="Full"/>).
+    /// </summary>
+    public static JsonObject Node(string name)
+    {
+        var app = Full(name);
+        foreach (var form in app["forms"]!.AsArray()) form!.AsObject().Remove("tools");
+        return app;
+    }
+
+    /// <summary>The sample as it is in the repository.</summary>
+    public static JsonObject Full(string name) => JsonNode.Parse(Json(name))!.AsObject();
 
     public static AppDefinition App(string name) => AppDefinition.Parse(Json(name));
 
@@ -96,6 +109,32 @@ public sealed class MetadataTests
     }
 
     [Fact]
+    public void A_form_field_may_span_columns_of_its_section()
+    {
+        var app = Samples.Node("siparis");
+        var sections = app["forms"]!.AsArray().Single(f => f!["key"]!.GetValue<string>() == "siparis")!["sections"]!.AsArray();
+        // A key alone, or the key with its width.
+        sections[0]!["fields"] = new JsonArray("siparis_no", new JsonObject { ["field"] = "musteri", ["span"] = 2 }, "tarih", "teslim", "durum", "toplam");
+
+        var parsed = AppDefinition.Parse(app.ToJsonString());
+        Assert.Empty(MetadataValidator.Validate(parsed));
+        var fields = parsed.Form("siparis")!.Sections[0].Fields;
+        Assert.Equal(["siparis_no", "musteri", "tarih", "teslim", "durum", "toplam"], fields.Select(f => f.Field));
+        Assert.Equal([null, 2, null, null, null, null], fields.Select(f => f.Span));
+
+        // Written back the same way: plain keys stay plain.
+        var written = JsonNode.Parse(parsed.ToJson())!["forms"]!.AsArray().Single(f => f!["key"]!.GetValue<string>() == "siparis")!["sections"]![0]!["fields"]!.AsArray();
+        Assert.Equal(JsonValueKind.String, written[0]!.GetValueKind());
+        Assert.Equal("musteri", written[1]!["field"]!.GetValue<string>());
+        Assert.Equal(2, written[1]!["span"]!.GetValue<int>());
+
+        // Wider than the section: refused.
+        sections[0]!["fields"]![1]!["span"] = 3;
+        Assert.Contains("Form 'siparis': 'musteri' alanının genişliği 1 ile bölümün sütun sayısı (2) arasında olmalı.",
+            MetadataValidator.Validate(AppDefinition.Parse(app.ToJsonString())));
+    }
+
+    [Fact]
     public void Forms_and_lists_inside_entities_become_app_forms_and_lists()
     {
         // The shape before app-level forms and lists: one of each inside an entity.
@@ -115,7 +154,7 @@ public sealed class MetadataTests
         Assert.Equal("Mevcut", parsed.Form("musteri")!.Name);
         var moved = parsed.Form("urun")!;
         Assert.Equal(("Ürün", "urun"), (moved.Name, moved.Entity));
-        Assert.Equal(["ad"], moved.Sections.Single().Fields);
+        Assert.Equal(["ad"], moved.Sections.Single().Fields.Select(f => f.Field));
         // A list is named after the entity's plural.
         var list = parsed.List("urun")!;
         Assert.Equal(("Ürünler", "urun", "ad", true), (list.Name, list.Entity, list.SortField, list.SortDescending));
@@ -163,6 +202,53 @@ public sealed class MetadataTests
     }
 
     [Fact]
+    public void Modals_have_fields_of_their_own_and_forms_have_tools()
+    {
+        // The sample has both; they survive a round trip.
+        var sample = Samples.App("siparis");
+        Assert.Equal(["TeslimOner", "MusteriOzeti", "NotEkle", "TeslimatPlanla", "MusteriDegistir", "NedeniyleIptalEt"], sample.Form("siparis")!.Tools.Select(t => t.Method));
+        var again = AppDefinition.Parse(sample.ToJson());
+        Assert.Equal(["baslangic", "bitis", "yalniz_onayli"], again.Modal("tarih_araligi")!.Fields.Select(f => f.Key));
+        Assert.Equal(2, again.Modal("tarih_araligi")!.Sections[0].Fields[2].Span);
+        Assert.Equal("Göster", again.Modal("tarih_araligi")!.OkText);
+        Assert.Equal(sample.ToJson(), sample.WithVersion(sample.Version).ToJson());
+        Assert.Equal(["tarih_araligi", "siparis_notu", "teslimat", "musteri_sec", "iptal_nedeni", "kapsam"], sample.AsPreview().Modals.Select(m => m.Key));
+
+        var app = Samples.Full("siparis");
+        var form = app["forms"]!.AsArray().Single(f => f!["key"]!.GetValue<string>() == "siparis")!;
+        form["tools"]!.AsArray().Add(new JsonObject { ["label"] = "Kötü", ["method"] = "2 kelime" });
+        form["tools"]!.AsArray().Add(new JsonObject { ["label"] = "Tekrar", ["method"] = "TeslimOner" });
+        // An entity may not hold organization fields: its scope does that.
+        app["entities"]!.AsArray()[0]!["fields"]!.AsArray().Add(new JsonObject { ["key"] = "firma", ["label"] = "Firma", ["type"] = "company" });
+        var modals = app["modals"]!.AsArray();
+        modals.Add(new JsonObject
+        {
+            ["key"] = "secim",
+            ["name"] = "Seçim",
+            ["fields"] = new JsonArray(
+                new JsonObject { ["key"] = "firma", ["label"] = "Firma", ["type"] = "company", ["required"] = true },
+                new JsonObject { ["key"] = "donem", ["label"] = "Dönem", ["type"] = "period" },
+                new JsonObject { ["key"] = "urun", ["label"] = "Ürün", ["type"] = "reference", ["reference"] = "yok" }),
+            ["sections"] = new JsonArray(new JsonObject { ["fields"] = new JsonArray("donem", new JsonObject { ["field"] = "kayip", ["span"] = 5 }) }),
+        });
+        modals.Add(new JsonObject { ["key"] = "musteri", ["name"] = "", ["fields"] = new JsonArray() });
+
+        var errors = MetadataValidator.Validate(AppDefinition.Parse(app.ToJsonString()));
+        Assert.Contains("Form 'siparis': araç 'Kötü' için metot adı geçersiz: '2 kelime' (bir C# metot adı olmalı).", errors);
+        Assert.Contains("Form 'siparis': aynı metot birden fazla araçta: 'TeslimOner'.", errors);
+        Assert.Contains("Entity 'musteri', alan 'firma': firma, lokasyon, plant ve dönem alanları yalnız modallarda kullanılır (entity'nin kapsamı bunları kendisi tutar).", errors);
+        Assert.Contains("Modal 'secim', alan 'urun': referans verilen entity bulunamadı: 'yok'.", errors);
+        Assert.Contains("Modal 'secim': yerleşimdeki alan bulunamadı: 'kayip'.", errors);
+        Assert.Contains("Modal 'secim': 'kayip' alanının genişliği 1 ile bölümün sütun sayısı (2) arasında olmalı.", errors);
+        Assert.Contains("Modal 'secim': zorunlu alan yerleşimde yok: 'firma'.", errors);
+        Assert.Contains("Modal 'musteri': bu anahtar bir entity'de kullanılıyor.", errors);
+        Assert.Contains("Modal 'musteri': ad gerekli.", errors);
+        Assert.Contains("Modal 'musteri': en az bir alan tanımlanmalı.", errors);
+        Assert.DoesNotContain(errors, e => e.StartsWith("Modal 'tarih_araligi'"));
+        Assert.DoesNotContain(errors, e => e.Contains("alan 'donem'"));
+    }
+
+    [Fact]
     public void Details_inherit_scope_and_period_and_get_a_parent_column()
     {
         var app = Samples.App("siparis");
@@ -193,7 +279,7 @@ public sealed class MetadataTests
     {
         var v1 = Samples.App("siparis");
         var node = Samples.Node("siparis");
-        node["version"] = "2.1.0";
+        node["version"] = "2.2.0";
         var siparis = node["entities"]!.AsArray()[2]!.AsObject();
         var fields = siparis["fields"]!.AsArray();
         fields.RemoveAt(5); // aciklama

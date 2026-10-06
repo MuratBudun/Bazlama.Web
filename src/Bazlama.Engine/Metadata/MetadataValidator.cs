@@ -53,28 +53,9 @@ public static partial class MetadataValidator
             foreach (var f in entity.Fields)
             {
                 var fat = $"{at}, alan '{f.Key}'";
-                if (!Identifier().IsMatch(f.Key ?? "")) e.Add($"{fat}: anahtar geçersiz.");
-                else if (Reserved.Contains(f.Key!)) e.Add($"{fat}: bu ad sistem kolonu için ayrılmış.");
-                if (string.IsNullOrWhiteSpace(f.Label)) e.Add($"{fat}: etiket gerekli.");
-                switch (f.Type)
-                {
-                    case FieldType.Text when f.MaxLength is < 1 or > 4000:
-                        e.Add($"{fat}: uzunluk 1 ile 4000 arasında olmalı."); break;
-                    case FieldType.Decimal when f.Precision is < 1 or > 28 || f.Scale is < 0 || (f.Scale ?? FieldDefinition.DefaultScale) > (f.Precision ?? FieldDefinition.DefaultPrecision):
-                        e.Add($"{fat}: ondalık hassasiyeti geçersiz (precision 1–28, scale ≤ precision)."); break;
-                    case FieldType.Choice when f.Choices is null or { Count: 0 }:
-                        e.Add($"{fat}: seçim alanının seçenekleri olmalı."); break;
-                    case FieldType.Choice when f.Choices!.GroupBy(c => c.Value).Any(g => g.Count() > 1):
-                        e.Add($"{fat}: seçenek değerleri tekrar ediyor."); break;
-                    case FieldType.Choice when f.Choices!.Any(c => c.Value is null or { Length: 0 or > 50 }):
-                        e.Add($"{fat}: seçenek değeri 1–50 karakter olmalı."); break;
-                    case FieldType.Reference when f.Reference is null:
-                        e.Add($"{fat}: referans alanı hangi entity'yi gösterdiğini belirtmeli ('reference')."); break;
-                    case FieldType.Reference when app.Entity(f.Reference!) is null:
-                        e.Add($"{fat}: referans verilen entity bulunamadı: '{f.Reference}'."); break;
-                    case FieldType.Reference when app.Entity(f.Reference!)!.Parent is not null:
-                        e.Add($"{fat}: detay entity'ye referans verilemez ('{f.Reference}')."); break;
-                }
+                ValidateField(app, f, fat, e);
+                if (Reserved.Contains(f.Key ?? "")) e.Add($"{fat}: bu ad sistem kolonu için ayrılmış.");
+                if (IsOrganization(f.Type)) e.Add($"{fat}: firma, lokasyon, plant ve dönem alanları yalnız modallarda kullanılır (entity'nin kapsamı bunları kendisi tutar).");
             }
 
             if (entity.TitleField is { } title && entity.Field(title) is null) e.Add($"{at}: başlık alanı bulunamadı: '{title}'.");
@@ -98,10 +79,52 @@ public static partial class MetadataValidator
             {
                 if (s.Columns is < 1 or > 3) e.Add($"{at}: bölüm sütun sayısı 1 ile 3 arasında olmalı.");
                 foreach (var f in s.Fields)
-                    if (entity.Field(f) is null) e.Add($"{at}: formdaki alan bulunamadı: '{f}'.");
+                {
+                    if (entity.Field(f.Field) is null) e.Add($"{at}: formdaki alan bulunamadı: '{f.Field}'.");
+                    if (f.Span is { } span && (span < 1 || span > Math.Clamp(s.Columns, 1, 3)))
+                        e.Add($"{at}: '{f.Field}' alanının genişliği 1 ile bölümün sütun sayısı ({s.Columns}) arasında olmalı.");
+                }
             }
-            foreach (var dup in form.Sections.SelectMany(s => s.Fields).GroupBy(f => f).Where(g => g.Count() > 1))
+            foreach (var dup in form.Sections.SelectMany(s => s.Fields).GroupBy(f => f.Field).Where(g => g.Count() > 1))
                 e.Add($"{at}: alan formda birden fazla kez var: '{dup.Key}'.");
+            foreach (var tool in form.Tools)
+            {
+                if (string.IsNullOrWhiteSpace(tool.Label)) e.Add($"{at}: araç adı gerekli.");
+                if (!MethodName().IsMatch(tool.Method ?? "")) e.Add($"{at}: araç '{tool.Label}' için metot adı geçersiz: '{tool.Method}' (bir C# metot adı olmalı).");
+            }
+            foreach (var dup in form.Tools.GroupBy(t => t.Method).Where(g => g.Count() > 1))
+                e.Add($"{at}: aynı metot birden fazla araçta: '{dup.Key}'.");
+        }
+
+        foreach (var dup in app.Modals.GroupBy(x => x.Key).Where(g => g.Count() > 1))
+            e.Add($"Modal anahtarı birden fazla kez kullanılmış: '{dup.Key}'.");
+        foreach (var modal in app.Modals)
+        {
+            var at = $"Modal '{modal.Key}'";
+            if (!Identifier().IsMatch(modal.Key ?? "")) e.Add($"{at}: anahtar geçersiz.");
+            // Both become classes of the app's code (Siparis, TarihAraligi).
+            else if (app.Entity(modal.Key!) is not null) e.Add($"{at}: bu anahtar bir entity'de kullanılıyor.");
+            if (string.IsNullOrWhiteSpace(modal.Name)) e.Add($"{at}: ad gerekli.");
+            if (modal.Fields.Count == 0) e.Add($"{at}: en az bir alan tanımlanmalı.");
+            foreach (var dup in modal.Fields.GroupBy(f => f.Key).Where(g => g.Count() > 1))
+                e.Add($"{at}: alan anahtarı birden fazla kez kullanılmış: '{dup.Key}'.");
+            foreach (var f in modal.Fields) ValidateField(app, f, $"{at}, alan '{f.Key}'", e);
+            foreach (var s in modal.Sections)
+            {
+                if (s.Columns is < 1 or > 3) e.Add($"{at}: bölüm sütun sayısı 1 ile 3 arasında olmalı.");
+                foreach (var f in s.Fields)
+                {
+                    if (modal.Field(f.Field) is null) e.Add($"{at}: yerleşimdeki alan bulunamadı: '{f.Field}'.");
+                    if (f.Span is { } span && (span < 1 || span > Math.Clamp(s.Columns, 1, 3)))
+                        e.Add($"{at}: '{f.Field}' alanının genişliği 1 ile bölümün sütun sayısı ({s.Columns}) arasında olmalı.");
+                }
+            }
+            foreach (var dup in modal.Sections.SelectMany(s => s.Fields).GroupBy(f => f.Field).Where(g => g.Count() > 1))
+                e.Add($"{at}: alan yerleşimde birden fazla kez var: '{dup.Key}'.");
+            // A required field that is not shown could never be filled.
+            if (modal.Sections.Count > 0)
+                foreach (var f in modal.Fields.Where(f => f.Required && !modal.Sections.Any(s => s.Fields.Any(x => x.Field == f.Key))))
+                    e.Add($"{at}: zorunlu alan yerleşimde yok: '{f.Key}'.");
         }
 
         foreach (var dup in app.Lists.GroupBy(x => x.Key).Where(g => g.Count() > 1))
@@ -130,6 +153,37 @@ public static partial class MetadataValidator
 
         ValidateMenu(app, app.Menu, 1, e);
         return e;
+    }
+
+    [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]{0,99}$")]
+    private static partial Regex MethodName();
+
+    public static bool IsOrganization(FieldType type) => type is FieldType.Company or FieldType.Location or FieldType.Plant or FieldType.Period;
+
+    /// <summary>What an entity's field and a modal's field have in common.</summary>
+    static void ValidateField(AppDefinition app, FieldDefinition f, string fat, List<string> e)
+    {
+        if (!Identifier().IsMatch(f.Key ?? "")) e.Add($"{fat}: anahtar geçersiz.");
+        if (string.IsNullOrWhiteSpace(f.Label)) e.Add($"{fat}: etiket gerekli.");
+        switch (f.Type)
+        {
+            case FieldType.Text when f.MaxLength is < 1 or > 4000:
+                e.Add($"{fat}: uzunluk 1 ile 4000 arasında olmalı."); break;
+            case FieldType.Decimal when f.Precision is < 1 or > 28 || f.Scale is < 0 || (f.Scale ?? FieldDefinition.DefaultScale) > (f.Precision ?? FieldDefinition.DefaultPrecision):
+                e.Add($"{fat}: ondalık hassasiyeti geçersiz (precision 1–28, scale ≤ precision)."); break;
+            case FieldType.Choice when f.Choices is null or { Count: 0 }:
+                e.Add($"{fat}: seçim alanının seçenekleri olmalı."); break;
+            case FieldType.Choice when f.Choices!.GroupBy(c => c.Value).Any(g => g.Count() > 1):
+                e.Add($"{fat}: seçenek değerleri tekrar ediyor."); break;
+            case FieldType.Choice when f.Choices!.Any(c => c.Value is null or { Length: 0 or > 50 }):
+                e.Add($"{fat}: seçenek değeri 1–50 karakter olmalı."); break;
+            case FieldType.Reference when f.Reference is null:
+                e.Add($"{fat}: referans alanı hangi entity'yi gösterdiğini belirtmeli ('reference')."); break;
+            case FieldType.Reference when app.Entity(f.Reference!) is null:
+                e.Add($"{fat}: referans verilen entity bulunamadı: '{f.Reference}'."); break;
+            case FieldType.Reference when app.Entity(f.Reference!)!.Parent is not null:
+                e.Add($"{fat}: detay entity'ye referans verilemez ('{f.Reference}')."); break;
+        }
     }
 
     /// <summary>Menu depth: groups may hold groups, three levels at most.</summary>

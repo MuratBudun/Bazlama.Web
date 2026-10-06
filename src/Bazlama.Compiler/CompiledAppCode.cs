@@ -11,8 +11,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Bazlama.Compiler;
 
-/// <summary>Field values (field key → CLR value) ↔ the generated record classes.</summary>
-static class RecordMapper
+/// <summary>Field values (field key → CLR value) ↔ the generated record and modal classes.</summary>
+static class ValueMapper
 {
     static IEnumerable<(PropertyInfo Property, string Key)> Fields(Type type) =>
         type.GetProperties().Select(p => (p, p.GetCustomAttribute<FieldAttribute>()?.Key)).Where(x => x.Key is not null)!;
@@ -22,10 +22,21 @@ static class RecordMapper
         var record = (Record)Activator.CreateInstance(type)!;
         record.Id = id;
         record.ParentId = parentId;
-        foreach (var (property, key) in Fields(type))
-            if (values.TryGetValue(key, out var value)) property.SetValue(record, value);
+        Fill(record, values);
         return record;
     }
+
+    /// <summary>Sets the properties whose field is among the values (a value of another type is left out).</summary>
+    public static void Fill(object target, IReadOnlyDictionary<string, object?> values)
+    {
+        foreach (var (property, key) in Fields(target.GetType()))
+            if (values.TryGetValue(key, out var value) && (value is null || property.PropertyType.IsInstanceOfType(value)))
+                property.SetValue(target, value);
+    }
+
+    /// <summary>Every field of a generated object by its key.</summary>
+    public static Dictionary<string, object?> Read(object source) =>
+        Fields(source.GetType()).ToDictionary(x => x.Key, x => x.Property.GetValue(source));
 
     public static void CopyBack(Record record, Dictionary<string, object?> values)
     {
@@ -49,6 +60,8 @@ sealed class CodeContext(IRequestContext request, TimeProvider time, IRecords re
     public Guid? PeriodId => request.PeriodId;
     public DateTime UtcNow => time.GetUtcNow().UtcDateTime;
     public IRecords Records => records;
+    /// <summary>Set for code a user waits for (a form tool); otherwise modals cannot be shown.</summary>
+    public IModals Modals { get; set; } = NoModals.Instance;
     public CancellationToken Cancellation => cancellation;
 }
 
@@ -61,7 +74,7 @@ sealed class CodeRecords(string appKey, LoadedApp loaded, IServiceProvider servi
     public async Task<T?> GetAsync<T>(Guid id) where T : Record, new()
     {
         var (_, data) = await services.GetRequiredService<DataService>().GetAsync(appKey, EntityKey<T>(), id, ct, asSystem: true);
-        return data is null ? null : (T)RecordMapper.FromData(loaded.Records[EntityKey<T>()], data);
+        return data is null ? null : (T)ValueMapper.FromData(loaded.Records[EntityKey<T>()], data);
     }
 
     public async Task<IReadOnlyList<T>> ListAsync<T>(string? search = null, int take = 100, Guid? parentId = null) where T : Record, new()
@@ -70,7 +83,7 @@ sealed class CodeRecords(string appKey, LoadedApp loaded, IServiceProvider servi
             .ListAsync(appKey, EntityKey<T>(), new ListQuery(search, Take: Math.Clamp(take, 1, 500), ParentId: parentId), ct, asSystem: true);
         if (list is null) throw new InvalidOperationException(string.Join(" ", result.Errors ?? []));
         var type = loaded.Records[EntityKey<T>()];
-        return [.. list.Items.Select(i => (T)RecordMapper.FromData(type, i))];
+        return [.. list.Items.Select(i => (T)ValueMapper.FromData(type, i))];
     }
 }
 
@@ -83,7 +96,7 @@ public sealed class CompiledAppCode(AppCodeHost host, IServiceProvider services,
     public async Task<CodeOutcome> BeforeSaveAsync(AppDefinition app, EntityDefinition entity, Guid id, Guid? parentId, Dictionary<string, object?> values, bool isNew, CancellationToken ct)
     {
         if (Handlers(app, entity) is not { } h) return CodeOutcome.None;
-        var record = RecordMapper.ToRecord(h.RecordType, id, parentId, values);
+        var record = ValueMapper.ToRecord(h.RecordType, id, parentId, values);
         var errors = new Errors();
         var outcome = await RunAsync(app, h.Loaded, ct, async context =>
         {
@@ -93,14 +106,14 @@ public sealed class CompiledAppCode(AppCodeHost host, IServiceProvider services,
         });
         if (outcome is not null) return outcome;
         if (errors.Any) return new CodeOutcome(errors.Fields, errors.General);
-        RecordMapper.CopyBack(record, values);
+        ValueMapper.CopyBack(record, values);
         return CodeOutcome.None;
     }
 
     public async Task<CodeOutcome> AfterSaveAsync(AppDefinition app, EntityDefinition entity, Guid id, Guid? parentId, Dictionary<string, object?> values, bool isNew, CancellationToken ct)
     {
         if (Handlers(app, entity) is not { } h) return CodeOutcome.None;
-        var record = RecordMapper.ToRecord(h.RecordType, id, parentId, values);
+        var record = ValueMapper.ToRecord(h.RecordType, id, parentId, values);
         return await RunAsync(app, h.Loaded, ct, async context =>
         {
             foreach (var handler in h.Instances) await Call(handler, "AfterSaveAsync", record, isNew, context);
@@ -110,7 +123,7 @@ public sealed class CompiledAppCode(AppCodeHost host, IServiceProvider services,
     public async Task<CodeOutcome> BeforeDeleteAsync(AppDefinition app, EntityDefinition entity, Guid id, Guid? parentId, Dictionary<string, object?> values, CancellationToken ct)
     {
         if (Handlers(app, entity) is not { } h) return CodeOutcome.None;
-        var record = RecordMapper.ToRecord(h.RecordType, id, parentId, values);
+        var record = ValueMapper.ToRecord(h.RecordType, id, parentId, values);
         var errors = new Errors();
         var outcome = await RunAsync(app, h.Loaded, ct, async context =>
         {
@@ -129,11 +142,12 @@ public sealed class CompiledAppCode(AppCodeHost host, IServiceProvider services,
     }
 
     /// <summary>Runs app code with a context and a time limit; its failures become a refusal (null = it ran).</summary>
-    internal async Task<CodeOutcome?> RunAsync(AppDefinition app, LoadedApp loaded, CancellationToken ct, Func<IAppContext, Task> body)
+    internal async Task<CodeOutcome?> RunAsync(AppDefinition app, LoadedApp loaded, CancellationToken ct, Func<IAppContext, Task> body, Func<IAppContext, IModals>? modals = null)
     {
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
         limit.CancelAfter(Timeout);
         var context = new CodeContext(request, time, new CodeRecords(app.Key, loaded, services, limit.Token), limit.Token);
+        if (modals is not null) context.Modals = modals(context);
         try
         {
             await body(context).WaitAsync(Timeout, ct);
@@ -176,7 +190,7 @@ public sealed class ActionRunner(AppCodeHost host, AppRegistry registry, DataSer
 
         var (_, current) = await data.GetAsync(appKey, entityKey, id, ct);
         if (current is null) return new(DataStatus.NotFound, null, ["Kayıt bulunamadı."]);
-        var record = RecordMapper.FromData(loaded.Records[entityKey], current);
+        var record = ValueMapper.FromData(loaded.Records[entityKey], current);
         Sdk.ActionResult? result = null;
         var failure = await ((CompiledAppCode)code).RunAsync(app, loaded, ct, async context =>
         {
@@ -189,7 +203,7 @@ public sealed class ActionRunner(AppCodeHost host, AppRegistry registry, DataSer
         if (result.SaveRecord)
         {
             var values = entity.Fields.ToDictionary(f => f.Key, f => current.GetValueOrDefault(f.Key));
-            RecordMapper.CopyBack(record, values);
+            ValueMapper.CopyBack(record, values);
             var saved = await data.UpdateAsync(appKey, entityKey, id, JsonSerializer.SerializeToElement(values), (int)current["rowVersion"]!, ct);
             if (saved.Status != DataStatus.Ok) return new(saved.Status, null, saved.Errors ?? ["Formdaki hataları düzeltin."], saved.FieldErrors);
         }

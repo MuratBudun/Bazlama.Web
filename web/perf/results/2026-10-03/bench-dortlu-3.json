@@ -1,0 +1,663 @@
+{
+  "chrome": "Chrome/154.0.8037.58",
+  "throttle": 1,
+  "table": [
+    {
+      "op": "1.000 satır oluştur",
+      "vanilla": {
+        "cpu": 68.42,
+        "script": 0.08,
+        "style": 10.33,
+        "layout": 41.67,
+        "painted": 77,
+        "sync": 4.5
+      },
+      "bazlama": {
+        "cpu": 93.53,
+        "script": 0.06,
+        "style": 11.96,
+        "layout": 42.26,
+        "painted": 91.4,
+        "sync": 23.8
+      },
+      "react": {
+        "cpu": 95.62,
+        "script": 0.06,
+        "style": 11.74,
+        "layout": 47.4,
+        "painted": 95.95,
+        "sync": 24.3
+      },
+      "mantine": {
+        "cpu": 178.72,
+        "script": 0.06,
+        "style": 15.37,
+        "layout": 46.87,
+        "painted": 183.05,
+        "sync": 109.2
+      }
+    },
+    {
+      "op": "1.000 satırı yenileriyle değiştir",
+      "vanilla": {
+        "cpu": 84.18,
+        "script": 0.06,
+        "style": 12.94,
+        "layout": 40.45,
+        "painted": 81.9,
+        "sync": 13.75
+      },
+      "bazlama": {
+        "cpu": 102.93,
+        "script": 3.62,
+        "style": 15.27,
+        "layout": 39.14,
+        "painted": 105.15,
+        "sync": 33.85
+      },
+      "react": {
+        "cpu": 99.91,
+        "script": 3.07,
+        "style": 13.52,
+        "layout": 38.14,
+        "painted": 99.75,
+        "sync": 31.75
+      },
+      "mantine": {
+        "cpu": 194.84,
+        "script": 0.15,
+        "style": 15.98,
+        "layout": 29.17,
+        "painted": 200.05,
+        "sync": 134.65
+      }
+    },
+    {
+      "op": "her 10. satırı güncelle (1.000)",
+      "vanilla": {
+        "cpu": 28.06,
+        "script": 0.06,
+        "style": 0.29,
+        "layout": 16.77,
+        "painted": 34.3,
+        "sync": 0.5
+      },
+      "bazlama": {
+        "cpu": 25.38,
+        "script": 0.06,
+        "style": 0,
+        "layout": 15.15,
+        "painted": 34.35,
+        "sync": 0.6
+      },
+      "react": {
+        "cpu": 30.8,
+        "script": 0.11,
+        "style": 0,
+        "layout": 18.58,
+        "painted": 39.1,
+        "sync": 2.4
+      },
+      "mantine": {
+        "cpu": 43.44,
+        "script": 0.08,
+        "style": 0,
+        "layout": 18.58,
+        "painted": 43.4,
+        "sync": 12.5
+      }
+    },
+    {
+      "op": "satır seç (1.000)",
+      "vanilla": {
+        "cpu": 2.1,
+        "script": 0.06,
+        "style": 0.11,
+        "layout": 0,
+        "painted": 10,
+        "sync": 0.1
+      },
+      "bazlama": {
+        "cpu": 3.55,
+        "script": 0.07,
+        "style": 0.14,
+        "layout": 0,
+        "painted": 11.4,
+        "sync": 0.85
+      },
+      "react": {
+        "cpu": 3.3,
+        "script": 0.06,
+        "style": 0.1,
+        "layout": 0,
+        "painted": 6.65,
+        "sync": 1.1
+      },
+      "mantine": {
+        "cpu": 3.81,
+        "script": 0.06,
+        "style": 0.12,
+        "layout": 0,
+        "painted": 5.1,
+        "sync": 1.85
+      }
+    },
+    {
+      "op": "iki satırın yerini değiştir (1.000)",
+      "vanilla": {
+        "cpu": 11.36,
+        "script": 0.06,
+        "style": 0.17,
+        "layout": 6.46,
+        "painted": 21.5,
+        "sync": 0.1
+      },
+      "bazlama": {
+        "cpu": 11.42,
+        "script": 0.1,
+        "style": 0.2,
+        "layout": 6.14,
+        "painted": 20.95,
+        "sync": 0.75
+      },
+      "react": {
+        "cpu": 69.37,
+        "script": 0.06,
+        "style": 11.95,
+        "layout": 31.17,
+        "painted": 68.4,
+        "sync": 12.2
+      },
+      "mantine": {
+        "cpu": 81.71,
+        "script": 0.07,
+        "style": 17.23,
+        "layout": 35.5,
+        "painted": 80.35,
+        "sync": 13.95
+      }
+    },
+    {
+      "op": "bir satır sil (1.000)",
+      "vanilla": {
+        "cpu": 14.11,
+        "script": 0.07,
+        "style": 0.08,
+        "layout": 5.94,
+        "painted": 23.9,
+        "sync": 0.1
+      },
+      "bazlama": {
+        "cpu": 13.85,
+        "script": 0.09,
+        "style": 0.08,
+        "layout": 5.66,
+        "painted": 20.3,
+        "sync": 0.65
+      },
+      "react": {
+        "cpu": 13.83,
+        "script": 0.06,
+        "style": 0.07,
+        "layout": 5.05,
+        "painted": 16.55,
+        "sync": 1.6
+      },
+      "mantine": {
+        "cpu": 23.83,
+        "script": 0.06,
+        "style": 10.88,
+        "layout": 4.99,
+        "painted": 28.85,
+        "sync": 1.85
+      }
+    },
+    {
+      "op": "10.000 satır oluştur",
+      "vanilla": {
+        "cpu": 883.83,
+        "script": 0.08,
+        "style": 132.27,
+        "layout": 536.36,
+        "painted": 886.8,
+        "sync": 99.7
+      },
+      "bazlama": {
+        "cpu": 1041.72,
+        "script": 6.36,
+        "style": 150.26,
+        "layout": 528.01,
+        "painted": 1049.9,
+        "sync": 249.7
+      },
+      "react": {
+        "cpu": 1179.92,
+        "script": 0.07,
+        "style": 123.73,
+        "layout": 560.87,
+        "painted": 1245.3,
+        "sync": 391.1
+      },
+      "mantine": {
+        "cpu": 1993.75,
+        "script": 9.23,
+        "style": 156.18,
+        "layout": 547.81,
+        "painted": 2157.1,
+        "sync": 1260.7
+      }
+    },
+    {
+      "op": "1.000 satıra 1.000 ekle",
+      "vanilla": {
+        "cpu": 96.75,
+        "script": 1.94,
+        "style": 13.09,
+        "layout": 54.13,
+        "painted": 99.4,
+        "sync": 6.6
+      },
+      "bazlama": {
+        "cpu": 128.94,
+        "script": 3.75,
+        "style": 17.4,
+        "layout": 62.8,
+        "painted": 140.35,
+        "sync": 23.75
+      },
+      "react": {
+        "cpu": 130.25,
+        "script": 3.52,
+        "style": 13.94,
+        "layout": 68.81,
+        "painted": 131.3,
+        "sync": 19.8
+      },
+      "mantine": {
+        "cpu": 255.24,
+        "script": 4.46,
+        "style": 43.56,
+        "layout": 65.59,
+        "painted": 308.8,
+        "sync": 140.7
+      }
+    },
+    {
+      "op": "1.000 satırı temizle",
+      "vanilla": {
+        "cpu": 7.79,
+        "script": 0.06,
+        "style": 0,
+        "layout": 0.11,
+        "painted": 11.75,
+        "sync": 6.85
+      },
+      "bazlama": {
+        "cpu": 10.98,
+        "script": 0.05,
+        "style": 0.02,
+        "layout": 0.1,
+        "painted": 10.65,
+        "sync": 10
+      },
+      "react": {
+        "cpu": 13.09,
+        "script": 0.06,
+        "style": 0.02,
+        "layout": 0.1,
+        "painted": 12.5,
+        "sync": 11.6
+      },
+      "mantine": {
+        "cpu": 15.91,
+        "script": 0.06,
+        "style": 0.02,
+        "layout": 0.1,
+        "painted": 15.15,
+        "sync": 14.55
+      }
+    },
+    {
+      "memory": {
+        "rows": 1000,
+        "vanilla": {
+          "heapKB": 162.1,
+          "perRowKB": 0.16,
+          "leftKB": 78.1,
+          "listeners": 0
+        },
+        "bazlama": {
+          "heapKB": 1879.2,
+          "perRowKB": 1.88,
+          "leftKB": 5.8,
+          "listeners": 2000
+        },
+        "react": {
+          "heapKB": 1759.9,
+          "perRowKB": 1.76,
+          "leftKB": 90.7,
+          "listeners": 2000
+        },
+        "mantine": {
+          "heapKB": 5109.5,
+          "perRowKB": 5.11,
+          "leftKB": 58.8,
+          "listeners": 2002
+        }
+      }
+    },
+    {
+      "memory": {
+        "rows": 10000,
+        "vanilla": {
+          "heapKB": 1258.6,
+          "perRowKB": 0.13,
+          "leftKB": 430.4,
+          "listeners": 0
+        },
+        "bazlama": {
+          "heapKB": 18174.1,
+          "perRowKB": 1.82,
+          "leftKB": -3.7,
+          "listeners": 20000
+        },
+        "react": {
+          "heapKB": 16762.4,
+          "perRowKB": 1.68,
+          "leftKB": 364.2,
+          "listeners": 20000
+        },
+        "mantine": {
+          "heapKB": 50349,
+          "perRowKB": 5.03,
+          "leftKB": 398.2,
+          "listeners": 20002
+        }
+      }
+    }
+  ],
+  "components": [
+    {
+      "kind": "button",
+      "count": 1000,
+      "vanilla": {
+        "cpu": 23.97,
+        "script": 0.08,
+        "style": 2.06,
+        "layout": 13.97,
+        "painted": 36.9,
+        "sync": 1,
+        "perMs": 0.024,
+        "kb": 0.01,
+        "elements": 1,
+        "listeners": 0,
+        "leftKB": 8.1
+      },
+      "bazlama": {
+        "cpu": 67.22,
+        "script": 21.66,
+        "style": 5.39,
+        "layout": 16.25,
+        "painted": 70,
+        "sync": 38.1,
+        "perMs": 0.067,
+        "kb": 4.95,
+        "elements": 1,
+        "listeners": 4,
+        "leftKB": 9.7
+      },
+      "react": {
+        "cpu": 28.13,
+        "script": 0.08,
+        "style": 2.53,
+        "layout": 13,
+        "painted": 34.7,
+        "sync": 7.7,
+        "perMs": 0.028,
+        "kb": 0.57,
+        "elements": 1,
+        "listeners": 1,
+        "leftKB": 41.5
+      },
+      "mantine": {
+        "cpu": 144.1,
+        "script": 0.09,
+        "style": 14.78,
+        "layout": 28.83,
+        "painted": 146.1,
+        "sync": 70.5,
+        "perMs": 0.144,
+        "kb": 3.09,
+        "elements": 3,
+        "listeners": 0,
+        "leftKB": 60.5
+      }
+    },
+    {
+      "kind": "input",
+      "count": 1000,
+      "vanilla": {
+        "cpu": 145.16,
+        "script": 1.74,
+        "style": 11.13,
+        "layout": 103.81,
+        "painted": 162.2,
+        "sync": 2.3,
+        "perMs": 0.145,
+        "kb": 0,
+        "elements": 3,
+        "listeners": 0,
+        "leftKB": 3.5
+      },
+      "bazlama": {
+        "cpu": 277.3,
+        "script": 116.51,
+        "style": 29.19,
+        "layout": 80.28,
+        "painted": 292.4,
+        "sync": 147.2,
+        "perMs": 0.277,
+        "kb": 17.15,
+        "elements": 6,
+        "listeners": 4,
+        "leftKB": -0.1
+      },
+      "react": {
+        "cpu": 145.9,
+        "script": 4.43,
+        "style": 9.83,
+        "layout": 84.91,
+        "painted": 145.9,
+        "sync": 21.4,
+        "perMs": 0.146,
+        "kb": 1.47,
+        "elements": 3,
+        "listeners": 1,
+        "leftKB": 0
+      },
+      "mantine": {
+        "cpu": 375.34,
+        "script": 3.07,
+        "style": 17.42,
+        "layout": 39.07,
+        "painted": 388.6,
+        "sync": 302.5,
+        "perMs": 0.375,
+        "kb": 14.52,
+        "elements": 4,
+        "listeners": 1,
+        "leftKB": 12.2
+      }
+    },
+    {
+      "kind": "checkbox",
+      "count": 1000,
+      "vanilla": {
+        "cpu": 35.25,
+        "script": 0.06,
+        "style": 5.26,
+        "layout": 15.95,
+        "painted": 44.8,
+        "sync": 1.8,
+        "perMs": 0.035,
+        "kb": 0,
+        "elements": 2,
+        "listeners": 0,
+        "leftKB": 0
+      },
+      "bazlama": {
+        "cpu": 193.32,
+        "script": 87.67,
+        "style": 28.72,
+        "layout": 54.38,
+        "painted": 201.7,
+        "sync": 106.2,
+        "perMs": 0.193,
+        "kb": 13.99,
+        "elements": 6,
+        "listeners": 3,
+        "leftKB": -4.7
+      },
+      "react": {
+        "cpu": 48.21,
+        "script": 0.07,
+        "style": 5.61,
+        "layout": 13.43,
+        "painted": 44.3,
+        "sync": 16.2,
+        "perMs": 0.048,
+        "kb": 1.36,
+        "elements": 2,
+        "listeners": 1,
+        "leftKB": 2.7
+      },
+      "mantine": {
+        "cpu": 390.35,
+        "script": 0.16,
+        "style": 30.07,
+        "layout": 34.15,
+        "painted": 403.6,
+        "sync": 306.7,
+        "perMs": 0.39,
+        "kb": 13.42,
+        "elements": 8,
+        "listeners": 2,
+        "leftKB": 36.2
+      }
+    },
+    {
+      "kind": "combobox",
+      "count": 500,
+      "vanilla": {
+        "cpu": 138.42,
+        "script": 1.89,
+        "style": 40.45,
+        "layout": 61.57,
+        "painted": 136.2,
+        "sync": 11.5,
+        "perMs": 0.277,
+        "kb": 0,
+        "elements": 7,
+        "listeners": 0,
+        "leftKB": 0
+      },
+      "bazlama": {
+        "cpu": 250.73,
+        "script": 143.24,
+        "style": 22.35,
+        "layout": 42.17,
+        "painted": 260.2,
+        "sync": 155.2,
+        "perMs": 0.501,
+        "kb": 25.99,
+        "elements": 12,
+        "listeners": 10,
+        "leftKB": 8.6
+      },
+      "react": {
+        "cpu": 161.49,
+        "script": 3.11,
+        "style": 46.07,
+        "layout": 64.98,
+        "painted": 162,
+        "sync": 29,
+        "perMs": 0.323,
+        "kb": 1.99,
+        "elements": 7,
+        "listeners": 1,
+        "leftKB": 1.2
+      },
+      "mantine": {
+        "cpu": 2016.68,
+        "script": 9.28,
+        "style": 54.83,
+        "layout": 22.8,
+        "painted": 2287.4,
+        "sync": 1681.9,
+        "perMs": 4.033,
+        "kb": 132.57,
+        "elements": 8,
+        "listeners": 15,
+        "leftKB": 30.8
+      }
+    },
+    {
+      "kind": "badge",
+      "count": 1000,
+      "vanilla": {
+        "cpu": 16.22,
+        "script": 0.07,
+        "style": 1.39,
+        "layout": 8.68,
+        "painted": 30.4,
+        "sync": 0.7,
+        "perMs": 0.016,
+        "kb": 0,
+        "elements": 1,
+        "listeners": 0,
+        "leftKB": 0
+      },
+      "bazlama": {
+        "cpu": 74.89,
+        "script": 27.72,
+        "style": 2.6,
+        "layout": 18.51,
+        "painted": 74.7,
+        "sync": 42.2,
+        "perMs": 0.075,
+        "kb": 4.49,
+        "elements": 1,
+        "listeners": 0,
+        "leftKB": -5.6
+      },
+      "react": {
+        "cpu": 21.08,
+        "script": 0.07,
+        "style": 1.26,
+        "layout": 8.27,
+        "painted": 30,
+        "sync": 5.4,
+        "perMs": 0.021,
+        "kb": 0.37,
+        "elements": 1,
+        "listeners": 0,
+        "leftKB": -14.8
+      },
+      "mantine": {
+        "cpu": 100.01,
+        "script": 2.64,
+        "style": 6.11,
+        "layout": 28.01,
+        "painted": 101.1,
+        "sync": 47.7,
+        "perMs": 0.1,
+        "kb": 1.79,
+        "elements": 2,
+        "listeners": 0,
+        "leftKB": 12.9
+      }
+    }
+  ],
+  "grid": [],
+  "signals": []
+}

@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 import { computed, flush, signal } from "@bazlama/core"
 import type { AppDef, EntityDef, ListDef } from "../runtime/api"
+import { generatedClassAt } from "./code"
 import type { DraftStore } from "./draft"
 
 beforeAll(async () => {
@@ -163,4 +164,47 @@ describe("bazlama-entity-editor", () => {
   })
 
 
+
+  it("opens the entity's generated class", async () => {
+    const { button } = await mount(fakeStore([siparis()]))
+    expect(button("Üretilen sınıf")).toBeUndefined() // only where the workbench can open it
+    document.body.replaceChildren()
+
+    const opened: string[] = []
+    const el = document.createElement("bazlama-entity-editor") as HTMLElement & { store: DraftStore; entity: string; openClass: (e: string) => void }
+    el.store = fakeStore([siparis()])
+    el.entity = "siparis"
+    el.openClass = (e) => opened.push(e)
+    document.body.append(el)
+    await settle()
+    ;[...el.querySelectorAll<HTMLElement>("bz-button")].find((x) => x.textContent?.trim() === "Üretilen sınıf")!.click()
+    expect(opened).toEqual(["siparis"])
+  })
+})
+
+describe("generated classes", () => {
+  const text = [
+    "namespace SatisApp;",
+    "",
+    "/// <summary>Sipariş.</summary>",
+    '[Entity("siparis")]',
+    "public partial class Siparis : Record",
+    "{",
+    "}",
+    "",
+    '[Entity("siparis_kalem")]',
+    "public partial class SiparisKalem : Record",
+    "{",
+    "}",
+    "",
+    '[Modal("siparis")]',
+    "public partial class SiparisModal : ModalValues",
+  ].join("\r\n")
+
+  it("finds where an entity's or a modal's class is declared", () => {
+    expect(generatedClassAt(text, "Entity", "siparis")).toEqual({ line: 5, column: 22 })
+    expect(generatedClassAt(text, "Entity", "siparis_kalem")).toEqual({ line: 10, column: 22 })
+    expect(generatedClassAt(text, "Modal", "siparis")).toEqual({ line: 15, column: 22 })
+    expect(generatedClassAt(text, "Entity", "yok")).toBeNull()
+  })
 })

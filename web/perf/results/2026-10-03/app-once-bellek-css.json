@@ -1,0 +1,250 @@
+{
+  "chrome": "Chrome/154.0.8037.58",
+  "base": "http://127.0.0.1:5420",
+  "throttle": 1,
+  "loads": [],
+  "actions": [],
+  "typing": null,
+  "memory": [
+    {
+      "name": "Ana sayfa (kartlar)",
+      "heapMB": 1.42,
+      "domElements": 159,
+      "nodes": 956,
+      "listeners": 61
+    },
+    {
+      "name": "Uygulama sekmesi + liste (50 satır)",
+      "heapMB": 1.94,
+      "domElements": 867,
+      "nodes": 3111,
+      "listeners": 139
+    },
+    {
+      "name": "Kayıt formu (7 kalem)",
+      "heapMB": 2.26,
+      "domElements": 534,
+      "nodes": 2956,
+      "listeners": 255
+    },
+    {
+      "name": "Kayıt formu (120 kalem, tam çizim)",
+      "heapMB": 3.03,
+      "domElements": 1777,
+      "nodes": 5799,
+      "listeners": 820
+    },
+    {
+      "name": "Kayıt formu (400 kalem, sanal kaydırma)",
+      "heapMB": 4.8,
+      "domElements": 4857,
+      "nodes": 12846,
+      "listeners": 2220
+    }
+  ],
+  "leaks": [],
+  "css": [
+    {
+      "name": "Kayıt formu (400 kalem)",
+      "totals": {
+        "recalcStyle": 3103.5,
+        "layout": 90.2,
+        "paint": 63.1,
+        "script": 1850.8
+      },
+      "selectors": [
+        {
+          "selector": "bz-shell:not([scroll-mode=\"page\"]) > [data-part=\"content\"] :not([hidden], bz-shell):has([data-shell-fill]):not(:has(bz-shell [data-shell-fill]))",
+          "ms": 38.88,
+          "attempts": 28828,
+          "matches": 18
+        },
+        {
+          "selector": "bz-shell:not([scroll-mode=\"page\"]) > [data-part=\"content\"] :not(bz-shell, [fill]):has([data-shell-fill]):not(:has(bz-shell [data-shell-fill])) > :not([data-shell-fill]):not(:has([data-shell-fill]))",
+          "ms": 23.78,
+          "attempts": 14414,
+          "matches": 0
+        },
+        {
+          "selector": "bz-shell:not([scroll-mode=\"page\"]) > [data-part=\"content\"]:has([data-shell-fill]):not(:has(bz-shell [data-shell-fill])) > :not([data-shell-fill]):not(:has([data-shell-fill]))",
+          "ms": 15.36,
+          "attempts": 14414,
+          "matches": 0
+        },
+        {
+          "selector": "bz-data-grid :is(th, td)",
+          "ms": 4.7,
+          "attempts": 14414,
+          "matches": 5636
+        },
+        {
+          "selector": "bz-shell:not([scroll-mode=\"page\"]) > [data-part=\"content\"]:has([data-shell-fill]):not(:has(bz-shell [data-shell-fill]))",
+          "ms": 3.57,
+          "attempts": 1676,
+          "matches": 9
+        },
+        {
+          "selector": "bz-data-grid[striped] tbody tr[data-stripe]:not([aria-selected=\"true\"]) > *",
+          "ms": 2.86,
+          "attempts": 14414,
+          "matches": 2800
+        },
+        {
+          "selector": "bz-data-grid tbody tr[data-part=\"row\"] > *",
+          "ms": 2.34,
+          "attempts": 14414,
+          "matches": 5600
+        },
+        {
+          "selector": ":is(bz-badge, bz-chip)",
+          "ms": 2.34,
+          "attempts": 14414,
+          "matches": 7
+        },
+        {
+          "selector": "bz-tabs > [role=\"tablist\"] > :is([data-part=\"scroll-prev\"], [data-part=\"scroll-next\"])",
+          "ms": 2.25,
+          "attempts": 14414,
+          "matches": 18
+        },
+        {
+          "selector": "bz-shell:not([data-compact]) > :is([data-part=\"start\"], [data-part=\"end\"])",
+          "ms": 1.89,
+          "attempts": 14414,
+          "matches": 0
+        },
+        {
+          "selector": "bz-shell > :is([data-part=\"start\"], [data-part=\"end\"])",
+          "ms": 1.77,
+          "attempts": 14414,
+          "matches": 0
+        },
+        {
+          "selector": "td:not(table td)",
+          "ms": 1.66,
+          "attempts": 5601,
+          "matches": 0
+        },
+        {
+          "selector": "bz-tabs[orientation=\"vertical\"] > [role=\"tablist\"] > :is([data-part=\"scroll-prev\"], [data-part=\"scroll-next\"])",
+          "ms": 1.6,
+          "attempts": 14414,
+          "matches": 0
+        },
+        {
+          "selector": ".rt-app-content:has(.rt-page > .page > [data-shell-fill])",
+          "ms": 1.57,
+          "attempts": 9,
+          "matches": 0
+        },
+        {
+          "selector": "bz-shell > * > :is([data-part=\"start-panel\"], [data-part=\"end-panel\"])",
+          "ms": 1.54,
+          "attempts": 14414,
+          "matches": 0
+        }
+      ]
+    },
+    {
+      "name": "Liste (Müşteriler, 50 satır)",
+      "totals": {
+        "recalcStyle": 432.7,
+        "layout": 4,
+        "paint": 3.6,
+        "script": 516.3
+      },
+      "selectors": [
+        {
+          "selector": "bz-shell:not([scroll-mode=\"page\"]) > [data-part=\"content\"] :not([hidden], bz-shell):has([data-shell-fill]):not(:has(bz-shell [data-shell-fill]))",
+          "ms": 3.26,
+          "attempts": 2236,
+          "matches": 74
+        },
+        {
+          "selector": "bz-shell:not([scroll-mode=\"page\"]) > [data-part=\"content\"] :not(bz-shell, [fill]):has([data-shell-fill]):not(:has(bz-shell [data-shell-fill])) > :not([data-shell-fill]):not(:has([data-shell-fill]))",
+          "ms": 1.91,
+          "attempts": 1118,
+          "matches": 20
+        },
+        {
+          "selector": "bz-shell:not([scroll-mode=\"page\"]) > [data-part=\"content\"]:has([data-shell-fill]):not(:has(bz-shell [data-shell-fill])) > :not([data-shell-fill]):not(:has([data-shell-fill]))",
+          "ms": 1.34,
+          "attempts": 1118,
+          "matches": 0
+        },
+        {
+          "selector": "bz-shell:not([scroll-mode=\"page\"]) > [data-part=\"content\"]:has([data-shell-fill]):not(:has(bz-shell [data-shell-fill]))",
+          "ms": 0.69,
+          "attempts": 414,
+          "matches": 5
+        },
+        {
+          "selector": "bz-menu-item > [data-part=\"submenu-indicator\"]",
+          "ms": 0.24,
+          "attempts": 414,
+          "matches": 0
+        },
+        {
+          "selector": ":is(bz-badge, bz-chip)",
+          "ms": 0.21,
+          "attempts": 1118,
+          "matches": 4
+        },
+        {
+          "selector": ":is(bz-input, bz-password, bz-combobox) [data-part=\"label\"]",
+          "ms": 0.2,
+          "attempts": 414,
+          "matches": 4
+        },
+        {
+          "selector": "bz-tabs > [role=\"tablist\"] > :is([data-part=\"scroll-prev\"], [data-part=\"scroll-next\"])",
+          "ms": 0.16,
+          "attempts": 1118,
+          "matches": 10
+        },
+        {
+          "selector": "bz-data-grid [aria-sort=\"ascending\"] [data-part=\"sort-indicator\"]::after",
+          "ms": 0.15,
+          "attempts": 414,
+          "matches": 8
+        },
+        {
+          "selector": "bz-data-grid th:is(:hover, :focus-within):not([aria-sort=\"ascending\"], [aria-sort=\"descending\"]) [data-part=\"sort-indicator\"]::after",
+          "ms": 0.14,
+          "attempts": 414,
+          "matches": 0
+        },
+        {
+          "selector": ".rt-app-content:has(.rt-page > .page > [data-shell-fill])",
+          "ms": 0.14,
+          "attempts": 5,
+          "matches": 4
+        },
+        {
+          "selector": "svg:not(:root)",
+          "ms": 0.14,
+          "attempts": 180,
+          "matches": 180
+        },
+        {
+          "selector": "bz-shell:not([data-compact]) > :is([data-part=\"start\"], [data-part=\"end\"])",
+          "ms": 0.13,
+          "attempts": 1118,
+          "matches": 0
+        },
+        {
+          "selector": "bz-data-grid :is(th, td)",
+          "ms": 0.13,
+          "attempts": 1118,
+          "matches": 20
+        },
+        {
+          "selector": "bz-shell > * > :is([data-part=\"start-resizer\"], [data-part=\"end-resizer\"])::after",
+          "ms": 0.13,
+          "attempts": 1118,
+          "matches": 0
+        }
+      ]
+    }
+  ]
+}

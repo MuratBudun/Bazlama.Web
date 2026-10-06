@@ -2,6 +2,7 @@ import { html, signal } from "@bazlama/core"
 import { dialogs } from "@bazlama/headless"
 import { formDialog, textField } from "../management/ui"
 import { defaultColumns, plural, type AppDef, type EntityDef, type FieldType, type MenuItemDef } from "../runtime/api"
+import { pascal } from "./code"
 import type { DraftStore } from "./draft"
 
 /* Metadata vocabulary of the designers, and the entity actions shared by the explorer and the editors. */
@@ -17,13 +18,54 @@ export const TYPES: { value: FieldType; label: string }[] = [
   { value: "choice", label: "Seçim" },
   { value: "reference", label: "Referans (başka kayıt)" },
 ]
+/** Organization pickers: fields of modals only (an entity's scope holds these itself). */
+export const ORG_TYPES: { value: FieldType; label: string }[] = [
+  { value: "company", label: "Firma" },
+  { value: "location", label: "Lokasyon" },
+  { value: "plant", label: "Plant" },
+  { value: "period", label: "Dönem" },
+]
+/** The types a modal's field may have. */
+export const MODAL_TYPES = [...TYPES, ...ORG_TYPES]
+/** What a modal's new field of a type is called until it is renamed. */
+export const NEW_FIELD_LABELS: Record<FieldType, string> = {
+  text: "Metin",
+  longText: "Açıklama",
+  integer: "Sayı",
+  decimal: "Tutar",
+  date: "Tarih",
+  dateTime: "Tarih ve saat",
+  boolean: "Evet/hayır",
+  choice: "Seçim",
+  reference: "Kayıt",
+  company: "Firma",
+  location: "Lokasyon",
+  plant: "Plant",
+  period: "Dönem",
+}
 export const SCOPES: { value: EntityDef["scope"]; label: string }[] = [
   { value: "global", label: "Tüm kurum" },
   { value: "company", label: "Firma" },
   { value: "location", label: "Lokasyon" },
   { value: "plant", label: "Plant" },
 ]
-export const typeLabel = (t: FieldType) => TYPES.find((x) => x.value === t)?.label ?? t
+export const typeLabel = (t: FieldType) => MODAL_TYPES.find((x) => x.value === t)?.label ?? t
+/** The icon of a field type (field lists, the form designer's palette). */
+export const TYPE_ICONS: Record<FieldType, string> = {
+  text: "edit",
+  longText: "file-text",
+  integer: "chart",
+  decimal: "chart",
+  date: "calendar",
+  dateTime: "clock",
+  boolean: "check",
+  choice: "list",
+  reference: "external-link",
+  company: "building",
+  location: "building",
+  plant: "building",
+  period: "calendar",
+}
 export const scopeLabel = (s: EntityDef["scope"]) => SCOPES.find((x) => x.value === s)?.label ?? s
 export const keyOk = (k: string) => /^[a-z][a-z0-9_]{0,29}$/.test(k)
 
@@ -232,6 +274,45 @@ export async function removeList(store: DraftStore, key: string) {
   store.update((a) => {
     a.lists = (a.lists ?? []).filter((x) => x.key !== key)
     dropFromMenu(a, (m) => m.list === key)
+  })
+  return true
+}
+
+/** Asks for a name and key and adds an empty modal to the draft; returns its key. */
+export async function newModal(store: DraftStore): Promise<string | null> {
+  const def = store.def()!
+  const name = signal("")
+  const key = signal("")
+  const ok = await formDialog({
+    heading: "Yeni modal",
+    submitText: "Oluştur",
+    body: () => html`<bz-form-layout columns="2" min-column-width="12rem">
+      <bz-input label="Ad" required hint="Pencerenin başlığı, örn. Tarih aralığı" .value=${name} @input=${(e: Event) => {
+        name.set((e.currentTarget as HTMLInputElement).value)
+        key.set(toKey(name()))
+      }}></bz-input>
+      ${textField("Anahtar", key, { required: true, hint: "Kodda sınıf adı olur." })}
+    </bz-form-layout>`,
+    submit: async () => {
+      if (!keyOk(key())) throw new Error("Anahtar küçük harf, rakam ve _ içermeli, harfle başlamalı.")
+      if ((def.modals ?? []).some((m) => m.key === key())) throw new Error("Bu anahtarla bir modal var.")
+      // Entities and modals both become classes of the app's code.
+      if (def.entities.some((e) => pascal(e.key) === pascal(key()))) throw new Error("Bu anahtar bir entity'de kullanılıyor.")
+      if (!name().trim()) throw new Error("Ad gerekli.")
+      store.update((a) => (a.modals = [...(a.modals ?? []), { key: key(), name: name().trim(), fields: [], sections: [{ fields: [], columns: 2 }] }]))
+    },
+  })
+  return ok ? key() : null
+}
+
+export async function removeModal(store: DraftStore, key: string) {
+  const m = store.def()!.modals?.find((x) => x.key === key)
+  if (!m) return false
+  const message = `${m.name} modalı kaldırılsın mı? Onu açan kod derlenmez hale gelir.`
+  if (!(await dialogs.confirm({ heading: "Modalı kaldır", message, confirmText: "Kaldır", cancelText: "Vazgeç", variant: "danger" }))) return false
+  store.update((a) => {
+    a.modals = (a.modals ?? []).filter((x) => x.key !== key)
+    if (a.modals.length === 0) delete a.modals
   })
   return true
 }

@@ -1,8 +1,9 @@
 import { computed, html, signal, type Signal } from "@bazlama/core"
 import { dialogs, icon, type GridColumn } from "@bazlama/headless"
-import { errorText } from "../api"
+import { api, errorText } from "../api"
 import { dataGrid, dateOnly, dateTime } from "../management/ui"
-import { listColumns, plural, records, titleField, type AppDef, type DataRecord, type EntityDef, type FieldDef } from "./api"
+import { me, type CompanyOption, type Named } from "../session"
+import { itemKey, itemSpan, listColumns, plural, records, titleField, type AppDef, type DataRecord, type EntityDef, type FieldDef, type FormSection } from "./api"
 
 /*
  * How each field type is shown in a grid and edited in a form. Values are kept as the API
@@ -85,7 +86,49 @@ export interface EditorOptions {
   titles: Signal<Record<string, string | null>>
   error: () => string
   readonly: boolean
+  /** Columns of the form section it takes (default: one; a long text the whole row). */
+  span?: number
+  /**
+   * Organization pickers: the company and the location chosen next to them (a modal's other
+   * fields). A location is one of that company's, a plant one of that location's. Not given:
+   * the working context's.
+   */
+  scope?: { company?: () => string | null; location?: () => string | null }
+  /** After the user changed the value. */
+  changed?: () => void
 }
+
+/** The companies (with their locations, plants and periods) the user may work in: asked once per user. */
+const organization = signal<CompanyOption[]>([])
+let organizationOf: string | null | undefined
+function organizationOptions() {
+  const user = me()?.user?.id ?? null
+  if (organizationOf !== user) {
+    organizationOf = user
+    organization.set([])
+    api.get<CompanyOption[]>("/auth/context/options").then(
+      (options) => organizationOf === user && organization.set(options),
+      () => (organizationOf = undefined),
+    )
+  }
+  return organization
+}
+
+/** Sections of fields, as the record form and the modals draw them. */
+export function sectionsView(sections: FormSection[], fields: FieldDef[], editor: (f: FieldDef, span: number | undefined) => unknown) {
+  return sections.map(
+    (s) => html`<bz-form-layout columns=${s.columns ?? 2} min-column-width="14rem">
+      ${s.title ? html`<h2 data-span="full" class="form-heading">${s.title}</h2>` : null}
+      ${s.fields.map((item) => {
+        const f = fields.find((x) => x.key === itemKey(item))
+        return f ? editor(f, itemSpan(item)) : null
+      })}
+    </bz-form-layout>`,
+  )
+}
+
+/** The data-span of a field in a bz-form-layout: what the form says, else by the field's type. */
+export const fieldSpan = (f: FieldDef, span?: number) => (span ? (span > 1 ? String(span) : null) : f.type === "longText" ? "full" : null)
 
 export function fieldEditor(o: EditorOptions) {
   const { field: f, value } = o
@@ -123,6 +166,28 @@ export function fieldEditor(o: EditorOptions) {
         ${(f.choices ?? []).map((c) => html`<bz-option value=${c.value}>${c.label}</bz-option>`)}
       </bz-combobox>`
       break
+    case "company":
+    case "location":
+    case "plant":
+    case "period": {
+      const all = organizationOptions()
+      const company = () => (o.scope?.company ? o.scope.company() : (me()?.context?.company?.id ?? null))
+      const location = () => (o.scope?.location ? o.scope.location() : (me()?.context?.location?.id ?? null))
+      const options = computed((): Named[] => {
+        if (f.type === "company") return all()
+        const c = all().find((x) => x.id === company())
+        if (f.type === "location") return c?.locations ?? []
+        if (f.type === "period") return c?.periods ?? []
+        return c?.locations.find((l) => l.id === location())?.plants ?? []
+      })
+      // Options are the combobox's children: it is drawn again when they change.
+      editor = html`${() => html`<bz-combobox label=${common.label} ?disabled=${o.readonly} native="touch"
+        .value=${() => (value() as string | null) ?? ""} @change=${(e: CustomEvent<{ value: string }>) => (value.set(e.detail.value || null), o.changed?.())}>
+        <bz-option value="">—</bz-option>
+        ${options().map((x) => html`<bz-option value=${x.id}>${x.name}</bz-option>`)}
+      </bz-combobox>`}`
+      break
+    }
     case "reference": {
       const target = o.app.entities.find((x) => x.key === f.reference)!
       editor = html`<bz-lookup label=${common.label} hint=${common.hint} ?readonly=${o.readonly} clearable
@@ -139,8 +204,11 @@ export function fieldEditor(o: EditorOptions) {
       editor = html`<bz-input label=${common.label} hint=${common.hint} ?readonly=${o.readonly} maxlength=${f.maxLength ?? 200}
         .value=${() => (value() as string | null) ?? ""} @input=${(e: Event) => value.set(text(e) || null)}></bz-input>`
   }
-  return html`<div class="field" data-span=${f.type === "longText" ? "full" : null}>
+  // A combobox has no hint of its own: the field shows it.
+  const selects = f.type === "choice" || f.type === "company" || f.type === "location" || f.type === "plant" || f.type === "period"
+  return html`<div class="field" data-span=${fieldSpan(f, o.span)}>
     ${editor}
+    ${selects && f.hint ? html`<div class="field-hint">${f.hint}</div>` : null}
     ${() => (o.error() ? html`<div class="field-error" role="alert">${o.error()}</div>` : null)}
   </div>`
 }

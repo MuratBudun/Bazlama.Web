@@ -404,3 +404,4 @@ src/Bazlama.Host/wwwroot/
 *.db
 *.db-shm
 *.db-wal
+web/perf/dist/
